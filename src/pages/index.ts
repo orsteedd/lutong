@@ -1,0 +1,7 @@
+export { default as DashboardPage } from './DashboardPage'
+export { default as InventoryPage } from './InventoryPage'
+export { default as ScanPage } from './ScanPage'
+export { default as DeliveryPage } from './DeliveryPage'
+export { default as AuditPage } from './AuditPage'
+export { default as ReportsPage } from './ReportsPage'
+export { default as AdminPage } from './AdminPage'
