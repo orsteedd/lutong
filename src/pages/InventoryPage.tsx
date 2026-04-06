@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { Navigate } from 'react-router-dom'
-import { AdminOnlyAction, Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
+import { AdminOnlyAction, Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
 import { useAuthStore, useInventoryStore, useOfflineQueueStore } from '@/store'
 import { useActivityLogStore } from '@/store/useActivityLogStore'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
@@ -9,6 +9,13 @@ import QRCode from 'qrcode'
 type InventoryOperationMode = 'delivery' | 'transfer' | 'wastage'
 
 const INVENTORY_DELIVERY_SESSION_PREFIX = 'INV-DEL'
+
+const closeRowActionsMenu = (event: MouseEvent<HTMLButtonElement>) => {
+  const details = event.currentTarget.closest('details')
+  if (details instanceof HTMLDetailsElement) {
+    details.removeAttribute('open')
+  }
+}
 
 const InventoryPage = () => {
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768)
@@ -33,6 +40,10 @@ const InventoryPage = () => {
   const [operationMessage, setOperationMessage] = useState<string | null>(null)
   const [qrBySku, setQrBySku] = useState<Record<string, string>>({})
   const [qrMessage, setQrMessage] = useState<string | null>(null)
+  const [addItemModalOpen, setAddItemModalOpen] = useState(false)
+  const [quickAdjustmentModalOpen, setQuickAdjustmentModalOpen] = useState(false)
+  const [stockSearch, setStockSearch] = useState('')
+  const [stockCategoryFilter, setStockCategoryFilter] = useState('all')
   const isAdmin = user?.role === 'admin'
 
   const items = Array.isArray(itemsState) ? itemsState : []
@@ -46,6 +57,25 @@ const InventoryPage = () => {
     () => items.find((item) => item.sku === operationSku),
     [items, operationSku]
   )
+
+  const stockCategories = useMemo(
+    () => Array.from(new Set(items.map((item) => item.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [items]
+  )
+
+  const filteredStockItems = useMemo(() => {
+    const query = stockSearch.trim().toLowerCase()
+
+    return snapshot.items.filter((item) => {
+      const baseItem = items.find((source) => source.sku === item.sku)
+      const category = baseItem?.category?.trim() || 'Uncategorized'
+      const searchableText = `${item.name} ${item.sku} ${category}`.toLowerCase()
+      const matchesSearch = query.length === 0 || searchableText.includes(query)
+      const matchesCategory = stockCategoryFilter === 'all' || category === stockCategoryFilter
+
+      return matchesSearch && matchesCategory
+    })
+  }, [items, snapshot.items, stockCategoryFilter, stockSearch])
 
   const nextSku = useMemo(() => {
     const used = new Set(items.map((item) => item.sku.toUpperCase()))
@@ -311,8 +341,20 @@ const InventoryPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Inventory</h1>
-        <p className="text-[#64748b]">Desktop stock view for current item levels and pending adjustments.</p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Inventory</h1>
+          </div>
+
+          <div className="flex flex-wrap gap-2 md:justify-end">
+            <Button variant="default" className="h-11" onClick={() => setAddItemModalOpen(true)} disabled={!isAdmin}>
+              + Add New Item
+            </Button>
+            <Button variant="outline" className="h-11" onClick={() => setQuickAdjustmentModalOpen(true)} disabled={!isAdmin}>
+              ⇅ Quick Adjustment
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -345,233 +387,333 @@ const InventoryPage = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Add Inventory Item</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!isAdmin && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Inventory write actions are restricted to admins.
+      <Dialog open={addItemModalOpen} onOpenChange={setAddItemModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Add Inventory Item</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            {!isAdmin && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Inventory write actions are restricted to admins.
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label className="text-sm text-[#334155]">
+                Auto SKU
+                <input
+                  type="text"
+                  value={nextSku}
+                  readOnly
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
+                />
+              </label>
+              <label className="text-sm text-[#334155]">
+                Item Name
+                <input
+                  type="text"
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  placeholder="Item name"
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                />
+              </label>
+              <label className="text-sm text-[#334155]">
+                Category
+                <input
+                  type="text"
+                  value={draftCategory}
+                  onChange={(e) => setDraftCategory(e.target.value)}
+                  placeholder="Category"
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                />
+              </label>
             </div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <label className="text-sm text-[#334155]">
-              Auto SKU
-              <input
-                type="text"
-                value={nextSku}
-                readOnly
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
-              />
-            </label>
-            <label className="text-sm text-[#334155]">
-              Item Name
-              <input
-                type="text"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                placeholder="Item name"
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
-              />
-            </label>
-            <label className="text-sm text-[#334155]">
-              Category
-              <input
-                type="text"
-                value={draftCategory}
-                onChange={(e) => setDraftCategory(e.target.value)}
-                placeholder="Category"
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
-              />
-            </label>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <label className="text-sm text-[#334155]">
-              Unit
-              <input
-                type="text"
-                value={draftUnit}
-                onChange={(e) => setDraftUnit(e.target.value)}
-                placeholder="pcs, kg, bottle"
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
-              />
-            </label>
-            <label className="text-sm text-[#334155]">
-              Current Quantity
-              <input
-                type="number"
-                min={0}
-                value={draftQuantity}
-                onChange={(e) => setDraftQuantity(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
-              />
-            </label>
-            <label className="text-sm text-[#334155]">
-              Safety Buffer
-              <input
-                type="number"
-                min={0}
-                value={draftSafetyBuffer}
-                onChange={(e) => setDraftSafetyBuffer(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
-              />
-            </label>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label className="text-sm text-[#334155]">
+                Unit
+                <input
+                  type="text"
+                  value={draftUnit}
+                  onChange={(e) => setDraftUnit(e.target.value)}
+                  placeholder="pcs, kg, bottle"
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                />
+              </label>
+              <label className="text-sm text-[#334155]">
+                Current Quantity
+                <input
+                  type="number"
+                  min={0}
+                  value={draftQuantity}
+                  onChange={(e) => setDraftQuantity(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                />
+              </label>
+              <label className="text-sm text-[#334155]">
+                Safety Buffer
+                <input
+                  type="number"
+                  min={0}
+                  value={draftSafetyBuffer}
+                  onChange={(e) => setDraftSafetyBuffer(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                />
+              </label>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+            {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose className="h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+              Cancel
+            </DialogClose>
             <AdminOnlyAction title="Only admins can add inventory items.">
               <Button className="h-11" onClick={handleAddItem}>Add Item</Button>
             </AdminOnlyAction>
-            {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
-          </div>
-        </CardContent>
-      </Card>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <Card>
+      <Dialog open={quickAdjustmentModalOpen} onOpenChange={setQuickAdjustmentModalOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <DialogTitle>Quick Adjustment</DialogTitle>
+              <span
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d6e8e0] text-[10px] text-[#64748b]"
+                title="Delivery adds to Stock. Transfer moves Stock to Display without creating missing stock. Wastage permanently reduces usable stock and is logged."
+                aria-label="Quick adjustment instructions"
+              >
+                i
+              </span>
+            </div>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <label className="text-sm text-[#334155]">
+                Item (SKU)
+                <select
+                  value={operationSku}
+                  onChange={(e) => setOperationSku(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                >
+                  <option value="">Select existing item</option>
+                  {items.map((item) => (
+                    <option key={item.id} value={item.sku}>
+                      {item.sku} • {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="text-sm text-[#334155]">
+                Mode
+                <select
+                  value={operationMode}
+                  onChange={(e) => setOperationMode(e.target.value as InventoryOperationMode)}
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                >
+                  <option value="delivery">Delivery (+Stock)</option>
+                  <option value="transfer">Transfer (Stock -&gt; Display)</option>
+                  <option value="wastage">Wastage (Non-usable)</option>
+                </select>
+              </label>
+
+              <label className="text-sm text-[#334155]">
+                Quantity
+                <input
+                  type="number"
+                  min={1}
+                  value={operationQty}
+                  onChange={(e) => setOperationQty(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                />
+              </label>
+
+              <div className="flex items-end">
+                <AdminOnlyAction title="Only admins can apply inventory operations.">
+                  <Button className="h-11 w-full" onClick={handleApplyOperation}>Apply Operation</Button>
+                </AdminOnlyAction>
+              </div>
+            </div>
+
+            {operationMode === 'wastage' && (
+              <label className="text-sm text-[#334155] block">
+                Wastage Reason
+                <input
+                  type="text"
+                  value={wastageReason}
+                  onChange={(e) => setWastageReason(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  disabled={!isAdmin}
+                />
+              </label>
+            )}
+
+            {selectedOperationItem && (
+              <p className="text-xs text-[#64748b]">
+                Current split for {selectedOperationItem.sku}: Stock {snapshot.items.find((x) => x.sku === selectedOperationItem.sku)?.stockQty ?? 0} • Display {snapshot.items.find((x) => x.sku === selectedOperationItem.sku)?.displayQty ?? 0}
+              </p>
+            )}
+
+            {operationMessage && <p className="text-xs text-[#64748b]">{operationMessage}</p>}
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose className="h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+              Close
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Card className="border-[#d6e8e0] shadow-[0_14px_40px_rgba(15,23,42,0.06)]">
         <CardHeader>
-          <CardTitle as="h2">Reuse Existing Item (Qty Operations)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <label className="text-sm text-[#334155]">
-              Item (SKU)
-              <select
-                value={operationSku}
-                onChange={(e) => setOperationSku(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle as="h2">Current Stock List</CardTitle>
+              <span
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d6e8e0] text-[10px] text-[#64748b]"
+                title="QR payload is the item SKU so scanners can reuse the same code format."
+                aria-label="Stock list instructions"
               >
-                <option value="">Select existing item</option>
-                {items.map((item) => (
-                  <option key={item.id} value={item.sku}>
-                    {item.sku} • {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-sm text-[#334155]">
-              Mode
-              <select
-                value={operationMode}
-                onChange={(e) => setOperationMode(e.target.value as InventoryOperationMode)}
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
-              >
-                <option value="delivery">Delivery (+Stock)</option>
-                <option value="transfer">Transfer (Stock -&gt; Display)</option>
-                <option value="wastage">Wastage (Non-usable)</option>
-              </select>
-            </label>
-
-            <label className="text-sm text-[#334155]">
-              Quantity
-              <input
-                type="number"
-                min={1}
-                value={operationQty}
-                onChange={(e) => setOperationQty(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
-              />
-            </label>
-
-            <div className="flex items-end">
-              <AdminOnlyAction title="Only admins can apply inventory operations.">
-                <Button className="h-11 w-full" onClick={handleApplyOperation}>Apply Operation</Button>
-              </AdminOnlyAction>
+                i
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row lg:w-[420px]">
+              <label className="flex-1">
+                <span className="sr-only">Search stock items</span>
+                <input
+                  type="search"
+                  value={stockSearch}
+                  onChange={(e) => setStockSearch(e.target.value)}
+                  placeholder="Search name or SKU"
+                  className="h-10 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 text-sm text-black placeholder:text-[#94a3b8]"
+                />
+              </label>
+              <label className="sm:w-48">
+                <span className="sr-only">Filter by category</span>
+                <select
+                  value={stockCategoryFilter}
+                  onChange={(e) => setStockCategoryFilter(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 text-sm text-black"
+                >
+                  <option value="all">All categories</option>
+                  {stockCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </div>
-
-          {operationMode === 'wastage' && (
-            <label className="text-sm text-[#334155] block">
-              Wastage Reason
-              <input
-                type="text"
-                value={wastageReason}
-                onChange={(e) => setWastageReason(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                disabled={!isAdmin}
-              />
-            </label>
-          )}
-
-          <div className="rounded-lg border border-[#dceae4] bg-[#f7fcfa] px-3 py-2 text-xs text-[#64748b]">
-            Delivery adds to Stock. Transfer moves Stock to Display without creating missing stock. Wastage permanently reduces usable stock and is logged.
-          </div>
-
-          {selectedOperationItem && (
-            <p className="text-xs text-[#64748b]">
-              Current split for {selectedOperationItem.sku}: Stock {snapshot.items.find((x) => x.sku === selectedOperationItem.sku)?.stockQty ?? 0} • Display {snapshot.items.find((x) => x.sku === selectedOperationItem.sku)?.displayQty ?? 0}
-            </p>
-          )}
-
-          {operationMessage && <p className="text-xs text-[#64748b]">{operationMessage}</p>}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Current Stock List</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-xs text-[#64748b] mb-3">
-            QR payload is the item SKU so scanners can reuse the same code format.
-          </p>
           {snapshot.items.length === 0 ? (
             <p className="text-sm text-gray-600">No inventory items available yet.</p>
+          ) : filteredStockItems.length === 0 ? (
+            <p className="text-sm text-gray-600">No items match your search or category filter.</p>
           ) : (
             <div className="space-y-2">
-              {snapshot.items.map((item) => {
+              {filteredStockItems.map((item) => {
                 const baseItem = items.find((source) => source.sku === item.sku)
                 const safetyBuffer = baseItem?.safetyBuffer ?? 0
                 const unit = baseItem?.unit ?? 'pcs'
                 const category = baseItem?.category ?? 'Uncategorized'
                 const isLow = item.confirmedAvailable <= safetyBuffer
+                const canDownloadQr = Boolean(qrBySku[item.sku])
                 return (
                   <div
                     key={item.itemId}
-                    className="rounded-lg border border-[#dceae4] bg-white px-3 py-3"
+                    className="rounded-xl border border-[#dceae4] bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.02)]"
                   >
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                      <div>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold text-black">{item.name}</p>
-                        <p className="text-xs text-gray-600">{item.sku} • {category}</p>
+                        <p className="text-xs text-gray-600">
+                          {item.sku} • {category}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2">
+
+                      <div className="flex items-center gap-3">
                         <Badge variant={isLow ? 'warning' : 'success'}>
                           {item.confirmedAvailable} {unit}
                         </Badge>
-                      </div>
-                    </div>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Button variant="outline" className="h-9" onClick={() => void handleGenerateQr(item.sku)}>
-                        Generate QR
-                      </Button>
-                      <Button variant="outline" className="h-9" onClick={() => handleDownloadQr(item.sku)}>
-                        Download
-                      </Button>
-                      <Button variant="outline" className="h-9" onClick={() => handlePrintQr(item.sku)}>
-                        Print
-                      </Button>
-                      <AdminOnlyAction title="Only admins can remove QR assignments.">
-                        <Button variant="outline" className="h-9" onClick={() => handleRemoveQr(item.sku)}>
-                          Remove QR
-                        </Button>
-                      </AdminOnlyAction>
-                      <AdminOnlyAction title="Only admins can delete inventory items.">
-                        <Button variant="outline" className="h-9 border-red-300 text-red-700" onClick={() => handleDeleteItem(item.itemId)}>
-                          Delete Item
-                        </Button>
-                      </AdminOnlyAction>
+                        <details className="relative">
+                          <summary className="list-none cursor-pointer rounded-lg border border-[#d6e8e0] bg-white px-3 py-2 text-sm font-medium text-black hover:bg-[#f3f7f5]">
+                            Actions
+                          </summary>
+                          <div className="absolute right-0 z-10 mt-2 w-48 overflow-hidden rounded-xl border border-[#dceae4] bg-white p-1 shadow-lg">
+                            <button
+                              type="button"
+                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                              onClick={(event) => {
+                                handleGenerateQr(item.sku)
+                                closeRowActionsMenu(event)
+                              }}
+                            >
+                              Generate QR
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                              disabled={!canDownloadQr}
+                              onClick={(event) => {
+                                handleDownloadQr(item.sku)
+                                closeRowActionsMenu(event)
+                              }}
+                            >
+                              Download QR
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                              disabled={!canDownloadQr}
+                              onClick={(event) => {
+                                handlePrintQr(item.sku)
+                                closeRowActionsMenu(event)
+                              }}
+                            >
+                              Print QR
+                            </button>
+                            <AdminOnlyAction title="Only admins can remove QR assignments.">
+                              <button
+                                type="button"
+                                className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                                onClick={(event) => {
+                                  handleRemoveQr(item.sku)
+                                  closeRowActionsMenu(event)
+                                }}
+                              >
+                                Remove QR
+                              </button>
+                            </AdminOnlyAction>
+                          </div>
+                        </details>
+
+                        <AdminOnlyAction title="Only admins can delete inventory items.">
+                          <Button
+                            variant="outline"
+                            className="h-9 w-9 rounded-full border-red-200 text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteItem(item.itemId)}
+                            aria-label={`Delete ${item.sku}`}
+                            title={`Delete ${item.sku}`}
+                          >
+                            <span aria-hidden="true">🗑</span>
+                          </Button>
+                        </AdminOnlyAction>
+                      </div>
                     </div>
 
                     {qrBySku[item.sku] && (

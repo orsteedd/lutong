@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components'
-import { runScanSystemSimulation, type SimulationMetrics } from '@/lib/scanSystemSimulator'
 import { useAuthStore, useOfflineQueueStore, useApprovalStore, useInventoryStore, useScanModeStore } from '@/store'
 import { useActivityLogStore } from '@/store/useActivityLogStore'
 import { clearAllLocalDatabase } from '@/lib/db'
@@ -9,14 +8,8 @@ const DELIVERY_GROUND_TRUTH_KEY = 'malatang.deliveryGroundTruthSessions.v1'
 
 const AdminPage = () => {
   const user = useAuthStore((state) => state.user)
-  const [simulationRunning, setSimulationRunning] = useState(false)
-  const [simulationError, setSimulationError] = useState<string | null>(null)
-  const [metrics, setMetrics] = useState<SimulationMetrics | null>(null)
-  const [notes, setNotes] = useState<string[]>([])
   const isAdmin = user?.role === 'admin'
-  const unresolvedConflicts = useOfflineQueueStore((state) => state.unresolvedConflicts)
   const conflictResolutionLogs = useOfflineQueueStore((state) => state.conflictResolutionLogs)
-  const clearUnresolvedConflicts = useOfflineQueueStore((state) => state.clearUnresolvedConflicts)
   const clearConflictLogs = useOfflineQueueStore((state) => state.clearConflictLogs)
   const clearAllQueues = useOfflineQueueStore((state) => state.clearAllQueues)
   const clearItems = useInventoryStore((state) => state.clearItems)
@@ -24,25 +17,6 @@ const AdminPage = () => {
   const clearActivityLogs = useActivityLogStore((state) => state.clearLogs)
   const resetWorkflow = useScanModeStore((state) => state.resetWorkflow)
   const [resetMessage, setResetMessage] = useState<string | null>(null)
-
-  const runSimulation = async (count: number) => {
-    if (!isAdmin) {
-      setSimulationError('Admin access is required for simulation tools.')
-      return
-    }
-
-    setSimulationRunning(true)
-    setSimulationError(null)
-    try {
-      const result = await runScanSystemSimulation(count)
-      setMetrics(result.metrics)
-      setNotes(result.notes)
-    } catch (error) {
-      setSimulationError(error instanceof Error ? error.message : 'Simulation failed')
-    } finally {
-      setSimulationRunning(false)
-    }
-  }
 
   const handleClearLocalCache = async () => {
     if (!isAdmin) return
@@ -52,7 +26,6 @@ const AdminPage = () => {
 
     clearAllQueues()
     clearConflictLogs()
-    clearUnresolvedConflicts()
 
     try {
       await clearAllLocalDatabase()
@@ -80,9 +53,6 @@ const AdminPage = () => {
 
     try {
       await clearAllLocalDatabase()
-      setMetrics(null)
-      setNotes([])
-      setSimulationError(null)
       setResetMessage('Application reset complete. Fresh local state is ready for testing.')
     } catch {
       setResetMessage('Reset partially completed. Please refresh and retry reset if needed.')
@@ -109,110 +79,6 @@ const AdminPage = () => {
       <Button variant="default" className="w-full h-12" disabled={!isAdmin}>
         Open Settings
       </Button>
-
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Scan System Simulation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-gray-600">Rapid scans, forced offline failure, reconnect sync, and error-path diagnostics.</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Button variant="default" className="h-12" onClick={() => runSimulation(10)} disabled={simulationRunning || !isAdmin}>
-              Run 10 Scans
-            </Button>
-            <Button variant="secondary" className="h-12" onClick={() => runSimulation(20)} disabled={simulationRunning || !isAdmin}>
-              Run 20 Scans
-            </Button>
-            <Button variant="outline" className="h-12" onClick={() => runSimulation(30)} disabled={simulationRunning || !isAdmin}>
-              Run 30 Scans
-            </Button>
-          </div>
-          {simulationRunning && <p className="text-xs text-amber-700">Running simulation...</p>}
-          {simulationError && <p className="text-xs text-red-700">{simulationError}</p>}
-          {metrics && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-gray-600">Requested / Success</p>
-                <p className="font-semibold text-black">{metrics.totalRequested} / {metrics.successCount}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-gray-600">Invalid / Duplicates</p>
-                <p className="font-semibold text-black">{metrics.invalidCount} / {metrics.duplicateBlocked}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-gray-600">Avg / P95 Scan ms</p>
-                <p className="font-semibold text-black">{metrics.avgScanProcessMs} / {metrics.p95ScanProcessMs}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-gray-600">Queue Before Sync</p>
-                <p className="font-semibold text-black">{metrics.queueBeforeSync}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-gray-600">Queue After Failure</p>
-                <p className="font-semibold text-black">{metrics.queueAfterFailure}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-gray-600">Queue After Retry</p>
-                <p className="font-semibold text-black">{metrics.queueAfterRetry}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-gray-600">Failure Observed</p>
-                <p className={`font-semibold ${metrics.syncFailureObserved ? 'text-amber-700' : 'text-green-700'}`}>
-                  {metrics.syncFailureObserved ? 'Yes' : 'No'}
-                </p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-gray-600">Retry Succeeded</p>
-                <p className={`font-semibold ${metrics.retrySucceeded ? 'text-green-700' : 'text-red-700'}`}>
-                  {metrics.retrySucceeded ? 'Yes' : 'No'}
-                </p>
-              </div>
-            </div>
-          )}
-          {notes.length > 0 && (
-            <ul className="list-disc list-inside text-xs text-gray-600 space-y-1">
-              {notes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className={unresolvedConflicts.length > 0 ? 'border-red-300 bg-red-50/40' : 'bg-[#fbfefd]'}>
-        <CardHeader>
-          <CardTitle as="h2">Conflict Review Queue</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-gray-700">
-              {unresolvedConflicts.length > 0
-                ? `${unresolvedConflicts.length} unresolved conflict(s) require admin review.`
-                : 'No unresolved conflicts.'}
-            </p>
-            {unresolvedConflicts.length > 0 && (
-              <Button variant="outline" className="h-10" onClick={clearUnresolvedConflicts} disabled={!isAdmin}>
-                Clear Review Queue
-              </Button>
-            )}
-          </div>
-
-          {unresolvedConflicts.length > 0 && (
-            <div className="space-y-2">
-              {unresolvedConflicts.map((conflict) => (
-                <div key={conflict.id} className="rounded-lg border border-red-200 bg-white p-3">
-                  <p className="text-sm font-semibold text-black">{conflict.sku}</p>
-                  <p className="text-xs text-gray-600">Record: {conflict.recordId}</p>
-                  <p className="text-xs text-red-700 mt-1">{conflict.reason}</p>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    {new Date(conflict.timestamp).toLocaleString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>

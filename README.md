@@ -45,7 +45,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 See [laravel-backend/README.md](laravel-backend/README.md) for the Laravel setup instructions.
 
-Local development is SQLite-first. Docker and MySQL are optional and not required for the main development workflow.
+Local development is SQLite-only for backend persistence, with `database/database.sqlite` as the main storage.
 
 ## Login
 

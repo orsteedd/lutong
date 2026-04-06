@@ -9,10 +9,8 @@ This service handles inventory, scan, delivery, audit, approval, report, and syn
 ## Requirements
 
 - PHP and Composer
-- SQLite (default local database)
+- SQLite (only backend database)
 - Node.js if you are building frontend assets through Vite
-
-Docker and MySQL are optional. They are not required for local development.
 
 ## Setup
 
@@ -26,6 +24,7 @@ php artisan serve
 ```
 
 The default `.env` uses SQLite at `database/database.sqlite`.
+Treat this file as the backend source of truth for persisted inventory state.
 
 If you are also running the frontend, configure `VITE_API_BASE_URL` in the frontend environment so it can reach this API.
 
@@ -66,7 +65,7 @@ All API endpoints are versioned under `/api/v1`.
 ## Configuration
 
 - Inventory cache settings live in [config/inventory.php](config/inventory.php)
-- The backend is designed to support offline-first queue sync from the frontend
+- The backend is designed to support offline-first queue sync from Dexie (client) to SQLite (server)
 
 ## Notes
 

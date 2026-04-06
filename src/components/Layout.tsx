@@ -94,19 +94,37 @@ const Layout = ({ children }: LayoutProps) => {
     return 'synced'
   }, [isSyncing, pendingCount, syncStatus])
 
-  const syncIcon = syncState === 'error' ? '●' : syncState === 'pending' ? '◐' : '●'
-  const syncClass =
+  const systemStatusTone =
+    syncState === 'error' || apiHealth === 'offline'
+      ? 'red'
+      : syncState === 'pending' || apiHealth === 'checking'
+        ? 'amber'
+        : 'green'
+
+  const systemStatusDotClass =
+    systemStatusTone === 'red'
+      ? 'bg-red-500'
+      : systemStatusTone === 'amber'
+        ? 'bg-amber-500'
+        : 'bg-green-500'
+
+  const systemStatusButtonClass =
+    systemStatusTone === 'red'
+      ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+      : systemStatusTone === 'amber'
+        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+        : 'border-[#bfe0d6] bg-white text-[#186c5d] hover:bg-[#f3faf7]'
+
+  const systemStatusDescription =
     syncState === 'error'
-      ? 'text-red-600'
+      ? 'Sync error detected'
       : syncState === 'pending'
-        ? 'text-amber-500'
-        : 'text-green-600'
-  const syncLabel =
-    syncState === 'error'
-      ? 'Sync Error'
-      : syncState === 'pending'
-        ? `Sync Pending (${pendingCount})`
-        : 'Synced'
+        ? `Sync pending for ${pendingCount} record(s)`
+        : apiHealth === 'offline'
+          ? 'API offline'
+          : apiHealth === 'checking'
+            ? 'Checking API connectivity'
+            : 'System ready'
 
   const retryCountdownSeconds = useMemo(() => {
     if (!nextRetryAt) return null
@@ -200,16 +218,6 @@ const Layout = ({ children }: LayoutProps) => {
     }
   }, [])
 
-  const apiHealthClasses =
-    apiHealth === 'online'
-      ? 'text-green-600 border-green-200 bg-green-50'
-      : apiHealth === 'offline'
-        ? 'text-red-600 border-red-200 bg-red-50'
-        : 'text-amber-600 border-amber-200 bg-amber-50'
-
-  const apiHealthLabel =
-    apiHealth === 'online' ? 'API Online' : apiHealth === 'offline' ? 'API Offline' : 'Checking API'
-
   return (
     <div className="min-h-screen px-2 py-2 md:h-screen md:overflow-hidden md:px-5 md:py-5">
       <div className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-[1500px] overflow-hidden rounded-[30px] border border-[#cfe5db] bg-[#edf4f1] shadow-[0_24px_64px_rgba(15,23,42,0.12)] md:min-h-0 md:h-[calc(100vh-2.5rem)]">
@@ -241,9 +249,10 @@ const Layout = ({ children }: LayoutProps) => {
           </nav>
           <div className="px-4 pb-5">
             <div className="rounded-xl border border-[#d6e8e0] bg-white px-3 py-3 text-xs text-[#64748b]">
-              <p className="font-semibold text-[#334155]">Status</p>
-              <p className="mt-1">{syncLabel}</p>
-              <p className="mt-1">{apiHealthLabel}</p>
+              <p className="font-semibold text-[#334155]">System Status</p>
+              <div className="mt-2 inline-flex items-center gap-2" title={systemStatusDescription}>
+                <span className={`h-2.5 w-2.5 rounded-full ${systemStatusDotClass}`} />
+              </div>
             </div>
           </div>
         </aside>
@@ -267,30 +276,14 @@ const Layout = ({ children }: LayoutProps) => {
               <div className="flex items-center gap-2 md:gap-3">
                 <button
                   type="button"
-                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                    syncState === 'error'
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : syncState === 'pending'
-                        ? 'bg-amber-500 text-white hover:bg-amber-600'
-                        : 'bg-[#1e8572] text-white hover:bg-[#186c5d]'
-                  } ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${systemStatusButtonClass} ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
                   onClick={handleSyncClick}
                   disabled={isSyncing}
                   title={syncButtonTitle}
                 >
-                  {isSyncing ? 'Syncing...' : syncState === 'error' ? 'Retry Sync' : 'Sync'}
+                  <span className={`h-2.5 w-2.5 rounded-full ${systemStatusDotClass}`} aria-hidden="true" />
+                  <span>{isSyncing ? 'Syncing...' : 'System Status'}</span>
                 </button>
-
-                <div
-                  className="inline-flex items-center gap-1 rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5"
-                  aria-label={syncLabel}
-                  title={syncLabel}
-                >
-                  <span className={`text-xs ${syncClass}`}>{syncIcon}</span>
-                  <span className="text-[10px] font-medium text-[#64748b] uppercase tracking-wide">
-                    {syncState}
-                  </span>
-                </div>
 
                 {syncError && (
                   <button
@@ -303,9 +296,7 @@ const Layout = ({ children }: LayoutProps) => {
                     }
                     onClick={() => setConflictDialogOpen(true)}
                   >
-                    {activeUnresolvedConflicts.length > 0
-                      ? `Review (${activeUnresolvedConflicts.length})`
-                      : 'Warning'}
+                    {activeUnresolvedConflicts.length > 0 ? `Review (${activeUnresolvedConflicts.length})` : 'Warning'}
                   </button>
                 )}
 
@@ -317,13 +308,6 @@ const Layout = ({ children }: LayoutProps) => {
                     Retry in {retryCountdownSeconds}s ({syncRetryCount})
                   </div>
                 )}
-
-                <div
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${apiHealthClasses}`}
-                  title="Backend API health"
-                >
-                  {apiHealthLabel}
-                </div>
 
                 <div className="hidden md:flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-[#64748b]">
