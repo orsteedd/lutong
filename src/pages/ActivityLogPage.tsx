@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
+import { AdminOnlyAction, Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
 import { useActivityLogStore, useAuthStore, type ActivityActionType } from '@/store'
 
 const ACTION_OPTIONS: Array<{ value: 'all' | ActivityActionType; label: string }> = [
@@ -109,9 +109,11 @@ const ActivityLogPage = () => {
             </div>
           )}
           <div className="flex justify-end">
-            <Button variant="outline" className="h-10" onClick={clearLogs} disabled={!isAdmin}>
-              Clear All Logs
-            </Button>
+            <AdminOnlyAction title="Only admins can clear activity logs.">
+              <Button variant="outline" className="h-10" onClick={clearLogs}>
+                Clear All Logs
+              </Button>
+            </AdminOnlyAction>
           </div>
 
           {filteredLogs.length === 0 ? (

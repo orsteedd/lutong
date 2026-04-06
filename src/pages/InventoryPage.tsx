@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
+import { AdminOnlyAction, Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
 import { useAuthStore, useInventoryStore, useOfflineQueueStore } from '@/store'
 import { useActivityLogStore } from '@/store/useActivityLogStore'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
@@ -426,7 +426,9 @@ const InventoryPage = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button className="h-11" onClick={handleAddItem} disabled={!isAdmin}>Add Item</Button>
+            <AdminOnlyAction title="Only admins can add inventory items.">
+              <Button className="h-11" onClick={handleAddItem}>Add Item</Button>
+            </AdminOnlyAction>
             {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
           </div>
         </CardContent>
@@ -482,7 +484,9 @@ const InventoryPage = () => {
             </label>
 
             <div className="flex items-end">
-              <Button className="h-11 w-full" onClick={handleApplyOperation} disabled={!isAdmin}>Apply Operation</Button>
+              <AdminOnlyAction title="Only admins can apply inventory operations.">
+                <Button className="h-11 w-full" onClick={handleApplyOperation}>Apply Operation</Button>
+              </AdminOnlyAction>
             </div>
           </div>
 
@@ -558,12 +562,16 @@ const InventoryPage = () => {
                       <Button variant="outline" className="h-9" onClick={() => handlePrintQr(item.sku)}>
                         Print
                       </Button>
-                      <Button variant="outline" className="h-9" onClick={() => handleRemoveQr(item.sku)} disabled={!isAdmin}>
-                        Remove QR
-                      </Button>
-                      <Button variant="outline" className="h-9 border-red-300 text-red-700" onClick={() => handleDeleteItem(item.itemId)} disabled={!isAdmin}>
-                        Delete Item
-                      </Button>
+                      <AdminOnlyAction title="Only admins can remove QR assignments.">
+                        <Button variant="outline" className="h-9" onClick={() => handleRemoveQr(item.sku)}>
+                          Remove QR
+                        </Button>
+                      </AdminOnlyAction>
+                      <AdminOnlyAction title="Only admins can delete inventory items.">
+                        <Button variant="outline" className="h-9 border-red-300 text-red-700" onClick={() => handleDeleteItem(item.itemId)}>
+                          Delete Item
+                        </Button>
+                      </AdminOnlyAction>
                     </div>
 
                     {qrBySku[item.sku] && (

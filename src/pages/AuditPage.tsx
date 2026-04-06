@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components'
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, AdminOnlyAction } from '@/components'
 import { useAuthStore, useApprovalStore, useInventoryStore, useModeActions, useOfflineQueueStore } from '@/store'
 import { buildAuditDiscrepancyReport } from '@/lib/auditDiscrepancy'
 
@@ -340,7 +340,9 @@ const AuditPage = () => {
                 </p>
                 <div className="flex items-center gap-2">
                   <Badge variant="warning">Pending Approval</Badge>
-                  <Button className="h-9" onClick={submitForApproval} disabled={!isAdmin}>Submit</Button>
+                  <AdminOnlyAction title="Only admins can submit approval requests.">
+                    <Button className="h-9" onClick={submitForApproval}>Submit</Button>
+                  </AdminOnlyAction>
                   <Button
                     variant="outline"
                     className="h-9 border-gray-300 text-black"

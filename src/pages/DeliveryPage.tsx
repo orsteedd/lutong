@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components'
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, AdminOnlyAction } from '@/components'
 import { useAuthStore, useInventoryStore, useModeActions, useOfflineQueueStore, useApprovalStore } from '@/store'
 import { verifyDeliverySession, type DeliverySessionData } from '@/lib/deliveryVerification'
 
@@ -368,9 +368,11 @@ const DeliveryPage = () => {
                   disabled={inventoryItems.length === 0 || !isAdmin}
                 />
               </label>
-              <Button type="button" className="h-10" onClick={addDraftLine} disabled={inventoryItems.length === 0 || !isAdmin}>
-                Add Item
-              </Button>
+              <AdminOnlyAction title="Only admins can modify delivery ground truth lines.">
+                <Button type="button" className="h-10" onClick={addDraftLine} disabled={inventoryItems.length === 0}>
+                  Add Item
+                </Button>
+              </AdminOnlyAction>
             </div>
 
             {inventoryItems.length === 0 && (
@@ -391,9 +393,11 @@ const DeliveryPage = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="default">{line.expectedQty} expected</Badge>
-                      <Button variant="outline" className="h-8" onClick={() => removeDraftLine(line.sku)} disabled={!isAdmin}>
-                        Remove
-                      </Button>
+                      <AdminOnlyAction title="Only admins can remove ground truth lines.">
+                        <Button variant="outline" className="h-8" onClick={() => removeDraftLine(line.sku)}>
+                          Remove
+                        </Button>
+                      </AdminOnlyAction>
                     </div>
                   </div>
                 ))}
@@ -402,7 +406,9 @@ const DeliveryPage = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button className="h-11" onClick={createDeliveryGroundTruth} disabled={!isAdmin}>Save Ground Truth Delivery</Button>
+            <AdminOnlyAction title="Only admins can create delivery ground truth sessions.">
+              <Button className="h-11" onClick={createDeliveryGroundTruth}>Save Ground Truth Delivery</Button>
+            </AdminOnlyAction>
             {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
           </div>
         </CardContent>
@@ -630,7 +636,9 @@ const DeliveryPage = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button className="h-11" onClick={submitForApproval} disabled={!isAdmin}>Submit For Approval</Button>
+            <AdminOnlyAction title="Only admins can submit delivery discrepancies for approval.">
+              <Button className="h-11" onClick={submitForApproval}>Submit For Approval</Button>
+            </AdminOnlyAction>
             <Button variant="outline" className="h-11" onClick={() => navigate('/approvals')}>
               Open Approval Queue
             </Button>

@@ -15,13 +15,6 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])
         ->name('api.v1.auth.login');
 
-    Route::middleware('auth.token')->group(function (): void {
-        Route::get('/auth/me', [AuthController::class, 'me'])
-            ->name('api.v1.auth.me');
-        Route::post('/auth/logout', [AuthController::class, 'logout'])
-            ->name('api.v1.auth.logout');
-    });
-
     Route::get('/health', static function () {
         return response()->json([
             'status' => 'ok',
@@ -30,43 +23,51 @@ Route::prefix('v1')->group(function (): void {
         ]);
     })->name('api.v1.health');
 
-    Route::get('/logs', [ActivityLogController::class, 'index'])
-        ->name('api.v1.logs.index');
+    Route::middleware('auth.token')->group(function (): void {
+        Route::get('/auth/me', [AuthController::class, 'me'])
+            ->name('api.v1.auth.me');
+        Route::post('/auth/logout', [AuthController::class, 'logout'])
+            ->name('api.v1.auth.logout');
 
-    Route::post('/approvals/{type}/{id}', [ApprovalController::class, 'handle'])
-        ->middleware(['auth.token', 'role:admin'])
-        ->name('api.v1.approvals.handle');
+        Route::get('/deliveries', [DeliveryController::class, 'index'])
+            ->name('api.v1.deliveries.index');
 
-    Route::post('/audits', [AuditController::class, 'store'])
-        ->name('api.v1.audits.store');
+        Route::post('/deliveries/{id}/verify', [DeliveryController::class, 'verify'])
+            ->name('api.v1.deliveries.verify');
 
-    Route::post('/audits/{id}/submit', [AuditController::class, 'submit'])
-        ->name('api.v1.audits.submit');
+        Route::get('/inventory/{item_id}', [InventoryController::class, 'show'])
+            ->name('api.v1.inventory.show');
 
-    Route::get('/deliveries', [DeliveryController::class, 'index'])
-        ->name('api.v1.deliveries.index');
+        Route::get('/reports/low-stock', [ReportController::class, 'lowStock'])
+            ->name('api.v1.reports.low-stock');
 
-    Route::post('/deliveries', [DeliveryController::class, 'store'])
-        ->name('api.v1.deliveries.store');
+        Route::get('/reports/daily-summary', [ReportController::class, 'dailySummary'])
+            ->name('api.v1.reports.daily-summary');
 
-    Route::post('/deliveries/{id}/verify', [DeliveryController::class, 'verify'])
-        ->name('api.v1.deliveries.verify');
+        Route::get('/reports/shrinkage', [ReportController::class, 'shrinkage'])
+            ->name('api.v1.reports.shrinkage');
 
-    Route::get('/inventory/{item_id}', [InventoryController::class, 'show'])
-        ->name('api.v1.inventory.show');
+        Route::post('/scan/submit', [ScanController::class, 'submit'])
+            ->name('api.v1.scan.submit');
 
-    Route::get('/reports/low-stock', [ReportController::class, 'lowStock'])
-        ->name('api.v1.reports.low-stock');
+        Route::post('/sync', [SyncController::class, 'store'])
+            ->name('api.v1.sync.store');
 
-    Route::get('/reports/daily-summary', [ReportController::class, 'dailySummary'])
-        ->name('api.v1.reports.daily-summary');
+        Route::middleware('role:admin')->group(function (): void {
+            Route::get('/logs', [ActivityLogController::class, 'index'])
+                ->name('api.v1.logs.index');
 
-    Route::get('/reports/shrinkage', [ReportController::class, 'shrinkage'])
-        ->name('api.v1.reports.shrinkage');
+            Route::post('/approvals/{type}/{id}', [ApprovalController::class, 'handle'])
+                ->name('api.v1.approvals.handle');
 
-    Route::post('/scan/submit', [ScanController::class, 'submit'])
-        ->name('api.v1.scan.submit');
+            Route::post('/audits', [AuditController::class, 'store'])
+                ->name('api.v1.audits.store');
 
-    Route::post('/sync', [SyncController::class, 'store'])
-        ->name('api.v1.sync.store');
+            Route::post('/audits/{id}/submit', [AuditController::class, 'submit'])
+                ->name('api.v1.audits.submit');
+
+            Route::post('/deliveries', [DeliveryController::class, 'store'])
+                ->name('api.v1.deliveries.store');
+        });
+    });
 });
