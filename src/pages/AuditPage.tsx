@@ -33,10 +33,25 @@ const AuditPage = () => {
   const pendingScansState = useOfflineQueueStore((state) => state.pendingScans)
   const inventoryItemsState = useInventoryStore((state) => state.items)
   const createApprovalRecord = useApprovalStore((state) => state.createRecord)
+  const [selectedSection, setSelectedSection] = useState('')
   const [selectedAuditId, setSelectedAuditId] = useState('')
   const [activeDiscrepancyIndex, setActiveDiscrepancyIndex] = useState(0)
   const [approvalMessage, setApprovalMessage] = useState<string | null>(null)
   const isAdmin = user?.role === 'admin'
+
+  const auditSections = ['Freezer', 'Dry Storage', 'Cooler', 'Pantry', 'Back Dock', 'Under Counter'] as const
+
+  const getSectionIcon = (section: string) => {
+    const icons: Record<string, string> = {
+      'Freezer': '🧊',
+      'Dry Storage': '📦',
+      'Cooler': '❄️',
+      'Pantry': '🗃️',
+      'Back Dock': '🚪',
+      'Under Counter': '📋',
+    }
+    return icons[section] || '📍'
+  }
 
   const pendingScans = Array.isArray(pendingScansState) ? pendingScansState : []
   const inventoryItems = Array.isArray(inventoryItemsState) ? inventoryItemsState : []
@@ -80,6 +95,7 @@ const AuditPage = () => {
   }, [inventoryItems, pendingScans])
 
   const selectedAudit = auditSessions.find((audit) => audit.id === selectedAuditId) ?? auditSessions[0]
+  const hasStartedAudit = selectedSection || selectedAudit
   const report = useMemo(
     () =>
       selectedAudit
@@ -170,66 +186,57 @@ const AuditPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Audit</h1>
-        <p className="text-[#64748b]">Select audit session, count items, compare with system.</p>
-        <p className="text-xs text-[#64748b] mt-1">
-          Delivery shortages are checked only against delivery ground truth. Audit is for Stock + Display total consistency checks.
-        </p>
+        <div className="flex items-center gap-2 mb-1">
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a]">Audit</h1>
+          <span
+            title="Discrepancies are determined by comparing physical counts against system inventory. Audits help verify stock accuracy across all warehouse sections."
+            className="inline-flex items-center justify-center w-6 h-6 text-sm font-bold text-[#64748b] border border-[#dceae4] rounded-full hover:bg-[#f7fcfa] cursor-help transition-colors"
+          >
+            ?
+          </span>
+        </div>
+        <p className="text-[#64748b]">Select a section to audit, count items, and compare with system.</p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {isMobileView ? (
-          <>
-            <Button variant="default" className="h-12" onClick={startAuditScan}>
-              🔍 Scan {selectedAudit?.id || nextAuditSessionId}
-            </Button>
-            <Button variant="secondary" className="h-12" onClick={startAuditScan}>
-              📊 Open Audit Scanner
-            </Button>
-          </>
-        ) : (
-          <div className="md:col-span-2 rounded-xl border border-[#dceae4] bg-[#f7fcfa] px-3 py-3 text-sm text-[#475569]">
-            Scanner actions are available on mobile only.
-          </div>
-        )}
-      </div>
-
-      <Card>
+      {/* Hero Section: Sections to Audit */}
+      <Card className="border-[#bde1d3] bg-[#ebf7f2]">
         <CardHeader>
-          <CardTitle as="h2">Audit Sessions</CardTitle>
+          <CardTitle as="h2">Start Audit</CardTitle>
+          <p className="text-sm text-[#64748b] mt-2">Choose a section to begin the physical count verification.</p>
         </CardHeader>
         <CardContent>
-          {auditSessions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#dceae4] bg-[#f7fcfa] px-3 py-6 text-center">
-              <p className="text-sm text-[#64748b]">No audit sessions yet. Start a scan to create {nextAuditSessionId}.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {auditSessions.map((audit) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {auditSections.map((section) => (
               <button
-                key={audit.id}
+                key={section}
                 type="button"
-                onClick={() => {
-                  setSelectedAuditId(audit.id)
-                  setActiveDiscrepancyIndex(0)
-                }}
-                className={`rounded-xl border p-3 text-left transition-all ${
-                  selectedAudit?.id === audit.id
-                    ? 'border-[#bde1d3] bg-[#ebf7f2]'
-                    : 'border-[#dceae4] bg-white hover:border-[#b7dcca]'
+                onClick={() => setSelectedSection(section)}
+                className={`rounded-xl border-2 p-5 text-left transition-all ${
+                  selectedSection === section
+                    ? 'border-[#1e8572] bg-white shadow-lg'
+                    : 'border-[#dceae4] bg-white hover:border-[#1e8572] hover:shadow-md'
                 }`}
               >
-                <p className="font-semibold text-black">{audit.id}</p>
-                <p className="text-xs text-gray-600">
-                  {new Date(audit.lastScannedAt).toLocaleString()} • {audit.scanCount} scan(s)
-                </p>
+                <div className="text-3xl mb-3">{getSectionIcon(section)}</div>
+                <p className="font-semibold text-[#0f172a] text-lg">{section}</p>
+                <p className="text-xs text-[#64748b] mt-1">Start new audit</p>
               </button>
-              ))}
-            </div>
-          )}
+            ))}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Quick Actions */}
+      {isMobileView && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Button variant="default" className="h-12" onClick={startAuditScan}>
+            🔍 Scan {selectedAudit?.id || nextAuditSessionId}
+          </Button>
+          <Button variant="secondary" className="h-12" onClick={startAuditScan}>
+            📊 Open Audit Scanner
+          </Button>
+        </div>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -259,48 +266,86 @@ const AuditPage = () => {
         </Card>
       </div>
 
-      {/* Recent Audits */}
+      {/* Audit History Table */}
       <Card>
         <CardHeader>
-          <CardTitle as="h2">Recent Audits</CardTitle>
+          <CardTitle as="h2">Audit History</CardTitle>
+          <p className="text-sm text-[#64748b] mt-2">All audits with status and action tracking.</p>
         </CardHeader>
         <CardContent>
           {auditSessions.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-600">No audits yet</p>
+              <p className="text-gray-600">No audits yet. Start a scan to create {nextAuditSessionId}.</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {auditSessions.map((audit) => (
-                <div key={audit.id} className="flex items-center justify-between p-4 bg-[#f7fcfa] rounded-xl border border-[#dceae4]">
-                  <div className="flex-1">
-                    <div className="font-medium text-black">{audit.id}</div>
-                    <div className="text-sm text-gray-600">
-                      {new Date(audit.lastScannedAt).toLocaleString()} • {audit.discrepancyCount} discrepancies
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={audit.status === 'pending' ? 'warning' : 'success'}>
-                      {audit.status === 'pending' ? '⏳ Pending' : '✓ Complete'}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      className="h-11"
-                      onClick={() => {
-                        setSelectedAuditId(audit.id)
-                        setActiveDiscrepancyIndex(0)
-                      }}
-                    >
-                      View
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#dceae4]">
+                    <th className="text-left py-3 px-3 font-semibold text-[#0f172a]">Session ID</th>
+                    <th className="text-left py-3 px-3 font-semibold text-[#0f172a]">Last Scanned</th>
+                    <th className="text-center py-3 px-3 font-semibold text-[#0f172a]">Scans</th>
+                    <th className="text-center py-3 px-3 font-semibold text-[#0f172a]">Discrepancies</th>
+                    <th className="text-center py-3 px-3 font-semibold text-[#0f172a]">Status</th>
+                    <th className="text-right py-3 px-3 font-semibold text-[#0f172a]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#dceae4]">
+                  {auditSessions.map((audit) => (
+                    <tr key={audit.id} className="hover:bg-[#f7fcfa] transition-colors">
+                      <td className="py-3 px-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAuditId(audit.id)
+                            setActiveDiscrepancyIndex(0)
+                          }}
+                          className="font-semibold text-primary hover:underline text-left"
+                        >
+                          {audit.id}
+                        </button>
+                      </td>
+                      <td className="py-3 px-3 text-gray-600">
+                        {new Date(audit.lastScannedAt).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-3 text-center text-gray-700">
+                        {audit.scanCount}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <span className={`font-semibold ${
+                          audit.discrepancyCount > 0 ? 'text-red-700' : 'text-green-700'
+                        }`}>
+                          {audit.discrepancyCount}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <Badge variant={audit.status === 'pending' ? 'warning' : 'success'}>
+                          {audit.status === 'pending' ? '⏳ In Progress' : '✓ Completed'}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <Button
+                          variant="outline"
+                          className="h-9 text-xs"
+                          onClick={() => {
+                            setSelectedAuditId(audit.id)
+                            setActiveDiscrepancyIndex(0)
+                          }}
+                        >
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
 
+      {hasStartedAudit && (
+      <>
       <Card className={report.discrepancies.length > 0 ? 'border-red-200' : 'border-green-200'}>
         <CardHeader>
           <CardTitle as="h2">Audit Discrepancy Engine • {selectedAudit?.id || 'No Session Selected'}</CardTitle>
@@ -455,34 +500,20 @@ const AuditPage = () => {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
 
-      {/* Discrepancy Sections */}
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Sections to Audit</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {['Freezer', 'Dry Storage', 'Cooler', 'Pantry', 'Back Dock', 'Under Counter'].map((section) => (
-              <Button key={section} variant="outline" className="h-12 border-gray-300 text-black">
-                {section}
-              </Button>
-            ))}
+      {!hasStartedAudit && (
+      <Card className="border-[#dceae4] bg-[#f7fcfa]">
+        <CardContent className="pt-6">
+          <div className="text-center">
+            <p className="text-sm font-semibold text-[#334155] mb-2">Ready to Audit?</p>
+            <p className="text-xs text-[#64748b]">Select a section above or open an existing audit session to begin verification.</p>
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Simple Guide */}
-      <Card className="bg-[#f8fcfa] border-[#dceae4]">
-        <CardContent className="pt-6">
-          <h3 className="font-semibold text-[#0f172a] mb-3">Guide</h3>
-          <ul className="space-y-2 text-sm text-[#475569] list-disc list-inside">
-            <li>Count items</li>
-            <li>Scan and compare</li>
-            <li>Resolve discrepancies</li>
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   )
 }
