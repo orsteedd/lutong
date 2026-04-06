@@ -9,8 +9,10 @@ This service handles inventory, scan, delivery, audit, approval, report, and syn
 ## Requirements
 
 - PHP and Composer
-- A configured database connection
+- SQLite (default local database)
 - Node.js if you are building frontend assets through Vite
+
+Docker and MySQL are optional. They are not required for local development.
 
 ## Setup
 
@@ -22,6 +24,8 @@ php artisan migrate
 php artisan db:seed
 php artisan serve
 ```
+
+The default `.env` uses SQLite at `database/database.sqlite`.
 
 If you are also running the frontend, configure `VITE_API_BASE_URL` in the frontend environment so it can reach this API.
 

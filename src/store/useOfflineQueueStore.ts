@@ -4,6 +4,7 @@ import {
   clearScans,
   deleteScan,
   getAllScans,
+  getPendingSyncItems,
   logScanEvent,
   saveScan,
   setPendingSyncStatus,
@@ -97,6 +98,54 @@ const ensureNumberOrNull = (value: unknown): number | null =>
 const ensureSyncStatus = (value: unknown): 'pending' | 'synced' | 'error' => {
   if (value === 'pending' || value === 'synced' || value === 'error') return value
   return 'synced'
+}
+
+const parsePendingPayloadRecord = (
+  item: { id: string; type: string; payload: string; timestamp: number; error?: string }
+): PendingScan | null => {
+  try {
+    const parsed = JSON.parse(item.payload) as
+      | Partial<PendingScan>
+      | {
+          sku?: string
+          name?: string
+          quantity?: number
+          scanType?: PendingScan['type']
+          metadata?: PendingScan['metadata']
+        }
+
+    const recordType =
+      parsed && typeof parsed === 'object' && 'type' in parsed
+        ? (parsed.type as PendingScan['type'] | undefined)
+        : (parsed as { scanType?: PendingScan['type'] })?.scanType
+
+    const type = recordType || (item.type as PendingScan['type'])
+    const sku = (parsed as { sku?: string })?.sku
+    const name = (parsed as { name?: string })?.name
+    const quantity = (parsed as { quantity?: number })?.quantity
+
+    if (!sku || !name || !Number.isFinite(quantity)) {
+      return null
+    }
+
+    if (type !== 'delivery' && type !== 'transfer' && type !== 'wastage' && type !== 'audit') {
+      return null
+    }
+
+    return {
+      id: item.id,
+      type,
+      sku,
+      name,
+      quantity: Number(quantity),
+      timestamp: item.timestamp,
+      synced: false,
+      metadata: (parsed as { metadata?: PendingScan['metadata'] })?.metadata,
+      error: item.error,
+    }
+  } catch {
+    return null
+  }
 }
 
 export interface PendingScan {
@@ -376,6 +425,25 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
         set({ isHydrating: true })
         try {
           const scans = await getAllScans()
+
+          if (scans.length === 0) {
+            const pendingItems = await getPendingSyncItems(['pending', 'error'])
+            const recovered = pendingItems
+              .map(parsePendingPayloadRecord)
+              .filter((record): record is PendingScan => record !== null)
+              .sort((a, b) => b.timestamp - a.timestamp)
+
+            if (recovered.length > 0) {
+              set({
+                scanQueue: recovered,
+                pendingScans: recovered,
+                isHydrating: false,
+                syncStatus: 'pending',
+              })
+              return
+            }
+          }
+
           set({
             scanQueue: scans,
             pendingScans: scans,

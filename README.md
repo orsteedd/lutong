@@ -45,6 +45,8 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 See [laravel-backend/README.md](laravel-backend/README.md) for the Laravel setup instructions.
 
+Local development is SQLite-first. Docker and MySQL are optional and not required for the main development workflow.
+
 ## Login
 
 - Login page route: `/login`
@@ -91,6 +93,13 @@ src/
 - Sync depends on `VITE_API_BASE_URL` being set for the Laravel backend
 - Transient sync failures auto-retry with exponential backoff
 - Unresolved conflicts remain manual review items
+
+### Offline Queue Pipeline
+
+- Zustand queue state lives in [src/store/useOfflineQueueStore.ts](src/store/useOfflineQueueStore.ts)
+- Dexie persistence lives in [src/lib/db.ts](src/lib/db.ts)
+- Startup hydration restores queue from Dexie scan queue and pending sync records
+- Reconnect and periodic online checks trigger queue sync to Laravel SQLite backend
 
 ### UI
 

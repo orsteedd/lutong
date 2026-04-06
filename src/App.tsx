@@ -21,6 +21,9 @@ import { fetchInventoryFromApi } from '@/lib/inventoryApi'
 function App() {
   const user = useAuthStore((state) => state.user)
   const hydrateScanQueue = useOfflineQueueStore((state) => state.hydrateScanQueue)
+  const retrySync = useOfflineQueueStore((state) => state.retrySync)
+  const totalPendingCount = useOfflineQueueStore((state) => state.totalPendingCount)
+  const isSyncing = useOfflineQueueStore((state) => state.isSyncing)
   const items = useInventoryStore((state) => state.items)
   const setItems = useInventoryStore((state) => state.setItems)
   const markSynced = useInventoryStore((state) => state.markSynced)
@@ -32,6 +35,33 @@ function App() {
   useEffect(() => {
     void hydrateScanQueue()
   }, [hydrateScanQueue])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const syncIfNeeded = async () => {
+      if (!navigator.onLine) return
+      if (isSyncing) return
+      if (totalPendingCount() === 0) return
+      await retrySync()
+    }
+
+    const handleOnline = () => {
+      void syncIfNeeded()
+    }
+
+    void syncIfNeeded()
+    window.addEventListener('online', handleOnline)
+
+    const timer = window.setInterval(() => {
+      void syncIfNeeded()
+    }, 30000)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.clearInterval(timer)
+    }
+  }, [isAuthenticated, isSyncing, retrySync, totalPendingCount])
 
   useEffect(() => {
     const hasLocalItems = Array.isArray(items) && items.length > 0
