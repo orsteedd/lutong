@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
-import { useInventoryStore, useOfflineQueueStore } from '@/store'
+import { useAuthStore, useInventoryStore, useOfflineQueueStore } from '@/store'
 import { useActivityLogStore } from '@/store/useActivityLogStore'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
 import QRCode from 'qrcode'
@@ -12,6 +12,7 @@ const INVENTORY_DELIVERY_SESSION_PREFIX = 'INV-DEL'
 
 const InventoryPage = () => {
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768)
+  const user = useAuthStore((state) => state.user)
   const itemsState = useInventoryStore((state) => state.items)
   const addItem = useInventoryStore((state) => state.addItem)
   const removeItem = useInventoryStore((state) => state.removeItem)
@@ -32,6 +33,7 @@ const InventoryPage = () => {
   const [operationMessage, setOperationMessage] = useState<string | null>(null)
   const [qrBySku, setQrBySku] = useState<Record<string, string>>({})
   const [qrMessage, setQrMessage] = useState<string | null>(null)
+  const isAdmin = user?.role === 'admin'
 
   const items = Array.isArray(itemsState) ? itemsState : []
   const scanQueue = Array.isArray(scanQueueState) ? scanQueueState : []
@@ -348,6 +350,11 @@ const InventoryPage = () => {
           <CardTitle as="h2">Add Inventory Item</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!isAdmin && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Inventory write actions are restricted to admins.
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <label className="text-sm text-[#334155]">
               Auto SKU
@@ -366,6 +373,7 @@ const InventoryPage = () => {
                 onChange={(e) => setDraftName(e.target.value)}
                 placeholder="Item name"
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               />
             </label>
             <label className="text-sm text-[#334155]">
@@ -376,6 +384,7 @@ const InventoryPage = () => {
                 onChange={(e) => setDraftCategory(e.target.value)}
                 placeholder="Category"
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               />
             </label>
           </div>
@@ -389,6 +398,7 @@ const InventoryPage = () => {
                 onChange={(e) => setDraftUnit(e.target.value)}
                 placeholder="pcs, kg, bottle"
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               />
             </label>
             <label className="text-sm text-[#334155]">
@@ -399,6 +409,7 @@ const InventoryPage = () => {
                 value={draftQuantity}
                 onChange={(e) => setDraftQuantity(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               />
             </label>
             <label className="text-sm text-[#334155]">
@@ -409,12 +420,13 @@ const InventoryPage = () => {
                 value={draftSafetyBuffer}
                 onChange={(e) => setDraftSafetyBuffer(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               />
             </label>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button className="h-11" onClick={handleAddItem}>Add Item</Button>
+            <Button className="h-11" onClick={handleAddItem} disabled={!isAdmin}>Add Item</Button>
             {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
           </div>
         </CardContent>
@@ -432,6 +444,7 @@ const InventoryPage = () => {
                 value={operationSku}
                 onChange={(e) => setOperationSku(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               >
                 <option value="">Select existing item</option>
                 {items.map((item) => (
@@ -448,6 +461,7 @@ const InventoryPage = () => {
                 value={operationMode}
                 onChange={(e) => setOperationMode(e.target.value as InventoryOperationMode)}
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               >
                 <option value="delivery">Delivery (+Stock)</option>
                 <option value="transfer">Transfer (Stock -&gt; Display)</option>
@@ -463,11 +477,12 @@ const InventoryPage = () => {
                 value={operationQty}
                 onChange={(e) => setOperationQty(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               />
             </label>
 
             <div className="flex items-end">
-              <Button className="h-11 w-full" onClick={handleApplyOperation}>Apply Operation</Button>
+              <Button className="h-11 w-full" onClick={handleApplyOperation} disabled={!isAdmin}>Apply Operation</Button>
             </div>
           </div>
 
@@ -479,6 +494,7 @@ const InventoryPage = () => {
                 value={wastageReason}
                 onChange={(e) => setWastageReason(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
               />
             </label>
           )}
@@ -542,10 +558,10 @@ const InventoryPage = () => {
                       <Button variant="outline" className="h-9" onClick={() => handlePrintQr(item.sku)}>
                         Print
                       </Button>
-                      <Button variant="outline" className="h-9" onClick={() => handleRemoveQr(item.sku)}>
+                      <Button variant="outline" className="h-9" onClick={() => handleRemoveQr(item.sku)} disabled={!isAdmin}>
                         Remove QR
                       </Button>
-                      <Button variant="outline" className="h-9 border-red-300 text-red-700" onClick={() => handleDeleteItem(item.itemId)}>
+                      <Button variant="outline" className="h-9 border-red-300 text-red-700" onClick={() => handleDeleteItem(item.itemId)} disabled={!isAdmin}>
                         Delete Item
                       </Button>
                     </div>

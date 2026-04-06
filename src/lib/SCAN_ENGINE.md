@@ -6,7 +6,7 @@
  * inventory scanning. It handles:
  * 
  * 1. ITEM LOOKUP
- *    - Mock database lookup by SKU
+ *    - Inventory store lookup by SKU
  *    - Real item details (name, category, location, stock levels)
  *    - Error handling for missing items
  * 
@@ -59,7 +59,7 @@
  * ERROR HANDLING
  * ──────────────
  * - INVALID_SKU: Empty or malformed SKU
- * - ITEM_NOT_FOUND: SKU not in mock database
+ * - ITEM_NOT_FOUND: SKU not present in inventory store
  * - INVALID_QUANTITY: Qty <= 0 or > 9999
  * 
  * Each error is:
@@ -110,29 +110,15 @@
  * }
  * 
  * ============================================================================
- * MOCK INVENTORY DATABASE
+ * INVENTORY DATA SOURCE
  * ============================================================================
  * 
- * Current items in MOCK_INVENTORY_DB:
- * - SKU-001 to SKU-010 (grains, condiments, vegetables, etc.)
+ * Lookup data comes from the hydrated inventory store.
  * 
- * To add more items:
- * 
- * export const MOCK_INVENTORY_DB: Record<string, InventoryItemData> = {
- *   'SKU-011': {
- *     sku: 'SKU-011',
- *     name: 'New Item',
- *     category: 'Category',
- *     unit: 'unit',
- *     minStock: 5,
- *     maxStock: 25,
- *     location: 'Shelf X',
- *   },
- *   // ... more items
- * }
- * 
- * Production: Replace MOCK_INVENTORY_DB with API fetch,
- * cache in React Query or SWR, update on sync.
+ * Recommended flow:
+ * - Hydrate inventory from API on app startup
+ * - Persist via Zustand storage for offline access
+ * - Use scan queue sync to reconcile changes
  * 
  * ============================================================================
  * PERFORMANCE CHARACTERISTICS
@@ -151,7 +137,7 @@
  * TESTING
  * ============================================================================
  * 
- * Mock inputs:
+ * Sample inputs:
  * - "SKU-001:5" → Success (Jasmine Rice)
  * - "SKU-001" → Show modal
  * - "SKU-999:5" → Error (not found)

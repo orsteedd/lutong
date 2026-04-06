@@ -10,7 +10,6 @@ import {
   lookupItemBySku,
   validateScanInput,
   createScanRecord,
-  MOCK_INVENTORY_DB,
   type ScanType,
 } from './scanEngine'
 
@@ -142,21 +141,18 @@ export async function exampleRapidScans() {
 }
 
 // ============================================================================
-// EXAMPLE 7: Available mock data
+// EXAMPLE 7: Inventory lookup state
 // ============================================================================
 
-export function exampleViewMockData() {
-  console.log('Available mock SKUs:')
-  Object.entries(MOCK_INVENTORY_DB).forEach(([sku, item]) => {
-    console.log(`  ${sku}: ${item.name} (${item.category})`)
-  })
+export function exampleInventoryLookupState() {
+  const lookup = lookupItemBySku('SKU-001')
+  if (!lookup.found) {
+    console.log('Inventory is empty or SKU does not exist yet.')
+    return
+  }
 
-  // Output:
-  // Available mock SKUs:
-  //   SKU-001: Jasmine Rice (10kg) (Grains)
-  //   SKU-002: Glutinous Rice (5kg) (Grains)
-  //   SKU-003: Fish Sauce (750ml) (Condiments)
-  //   ... etc
+  console.log('Inventory lookup is ready for scanning.')
+  console.log(`Found: ${lookup.item?.sku} -> ${lookup.item?.name}`)
 }
 
 // ============================================================================

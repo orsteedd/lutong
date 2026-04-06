@@ -15,8 +15,25 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
+        'password',
+        'api_token',
+        'last_login_at',
         'role',
     ];
+
+    protected $hidden = [
+        'password',
+        'api_token',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'password' => 'hashed',
+            'last_login_at' => 'datetime',
+        ];
+    }
 
     public function scopeAdmin($query)
     {

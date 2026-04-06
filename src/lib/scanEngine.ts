@@ -21,9 +21,6 @@ export interface InventoryItemData {
   location: string
 }
 
-// Kept for backward compatibility with example files.
-export const MOCK_INVENTORY_DB: Record<string, InventoryItemData> = {}
-
 // ============================================================================
 // ITEM LOOKUP
 // ============================================================================
@@ -327,20 +324,3 @@ export const formatItemDetails = (item: InventoryItemData): FormattedItemDetails
     max: item.maxStock,
   },
 })
-
-// ============================================================================
-// UTILITY: Create mock scan for testing
-// ============================================================================
-
-export const createMockScan = (sku: string = 'SKU-001', quantity: number = 5): PendingScan => {
-  const now = Date.now()
-  return {
-    id: `${sku}-${now}-mock`,
-    type: 'transfer',
-    sku,
-    name: `Item ${sku}`,
-    quantity,
-    timestamp: now,
-    synced: false,
-  }
-}

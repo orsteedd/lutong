@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\ApprovalController;
 use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AuditController;
+use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DeliveryController;
 use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -11,6 +12,16 @@ use App\Http\Controllers\Api\V1\SyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
+    Route::post('/auth/login', [AuthController::class, 'login'])
+        ->name('api.v1.auth.login');
+
+    Route::middleware('auth.token')->group(function (): void {
+        Route::get('/auth/me', [AuthController::class, 'me'])
+            ->name('api.v1.auth.me');
+        Route::post('/auth/logout', [AuthController::class, 'logout'])
+            ->name('api.v1.auth.logout');
+    });
+
     Route::get('/health', static function () {
         return response()->json([
             'status' => 'ok',
@@ -23,6 +34,7 @@ Route::prefix('v1')->group(function (): void {
         ->name('api.v1.logs.index');
 
     Route::post('/approvals/{type}/{id}', [ApprovalController::class, 'handle'])
+        ->middleware(['auth.token', 'role:admin'])
         ->name('api.v1.approvals.handle');
 
     Route::post('/audits', [AuditController::class, 'store'])

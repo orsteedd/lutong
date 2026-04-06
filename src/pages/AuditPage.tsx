@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components'
-import { useApprovalStore, useInventoryStore, useModeActions, useOfflineQueueStore } from '@/store'
+import { useAuthStore, useApprovalStore, useInventoryStore, useModeActions, useOfflineQueueStore } from '@/store'
 import { buildAuditDiscrepancyReport } from '@/lib/auditDiscrepancy'
 
 interface AuditSessionSummary {
@@ -28,6 +28,7 @@ const EMPTY_AUDIT_REPORT = {
 const AuditPage = () => {
   const navigate = useNavigate()
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768)
+  const user = useAuthStore((state) => state.user)
   const { setMode } = useModeActions()
   const pendingScansState = useOfflineQueueStore((state) => state.pendingScans)
   const inventoryItemsState = useInventoryStore((state) => state.items)
@@ -35,6 +36,7 @@ const AuditPage = () => {
   const [selectedAuditId, setSelectedAuditId] = useState('')
   const [activeDiscrepancyIndex, setActiveDiscrepancyIndex] = useState(0)
   const [approvalMessage, setApprovalMessage] = useState<string | null>(null)
+  const isAdmin = user?.role === 'admin'
 
   const pendingScans = Array.isArray(pendingScansState) ? pendingScansState : []
   const inventoryItems = Array.isArray(inventoryItemsState) ? inventoryItemsState : []
@@ -304,6 +306,11 @@ const AuditPage = () => {
           <CardTitle as="h2">Audit Discrepancy Engine • {selectedAudit?.id || 'No Session Selected'}</CardTitle>
         </CardHeader>
         <CardContent>
+          {!isAdmin && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Approval submission is restricted to admins.
+            </div>
+          )}
           <div className="mb-3 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-red-100 text-red-800 px-2 py-1">Red = Missing Stock</span>
             <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-1">Yellow = Excess Stock</span>
@@ -333,7 +340,7 @@ const AuditPage = () => {
                 </p>
                 <div className="flex items-center gap-2">
                   <Badge variant="warning">Pending Approval</Badge>
-                  <Button className="h-9" onClick={submitForApproval}>Submit</Button>
+                  <Button className="h-9" onClick={submitForApproval} disabled={!isAdmin}>Submit</Button>
                   <Button
                     variant="outline"
                     className="h-9 border-gray-300 text-black"

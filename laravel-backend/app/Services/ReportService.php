@@ -40,13 +40,14 @@ class ReportService
                 ->select(
                     'i.id',
                     'i.name',
+                    'i.qr_code',
                     'i.safety_buffer',
                     DB::raw('COALESCE(MAX(la.base_qty), 0) as base_qty'),
                     DB::raw("COALESCE(SUM(CASE WHEN l.type = 'delivery' THEN l.quantity ELSE 0 END), 0) as delivery_qty"),
                     DB::raw("COALESCE(SUM(CASE WHEN l.type = 'wastage' THEN l.quantity ELSE 0 END), 0) as wastage_qty"),
                     DB::raw("COALESCE(SUM(CASE WHEN l.type = 'adjustment' THEN l.quantity ELSE 0 END), 0) as adjustment_qty")
                 )
-                ->groupBy('i.id', 'i.name', 'i.safety_buffer')
+                ->groupBy('i.id', 'i.name', 'i.qr_code', 'i.safety_buffer')
                 ->get();
 
             $items = [];
@@ -68,6 +69,7 @@ class ReportService
                 $items[] = [
                     'item_id' => (int) $row->id,
                     'item_name' => $row->name,
+                    'qr_code' => $row->qr_code,
                     'stock' => $stock,
                     'safety_buffer' => (float) $row->safety_buffer,
                     'is_low_stock' => $isLow,

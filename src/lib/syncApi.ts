@@ -1,4 +1,5 @@
 import type { PendingScan } from '@/store/useOfflineQueueStore'
+import { getApiBaseUrl } from './apiBaseUrl'
 
 export interface SyncResponse {
   success: boolean
@@ -22,12 +23,7 @@ export const sendPendingScansToApi = async (records: PendingScan[]): Promise<Syn
     return { success: true, syncedIds: [], message: 'No records to sync' }
   }
 
-  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
-  if (apiBaseUrl.trim() === '') {
-    throw new Error('VITE_API_BASE_URL is not set. Laravel backend URL is required for sync.')
-  }
-
-  const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/api/v1/sync`
+  const endpoint = `${getApiBaseUrl()}/api/v1/sync`
   const nowIso = new Date().toISOString()
   const payloadRecords = records
     .map((record) => {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
-import { useActivityLogStore, type ActivityActionType } from '@/store'
+import { useActivityLogStore, useAuthStore, type ActivityActionType } from '@/store'
 
 const ACTION_OPTIONS: Array<{ value: 'all' | ActivityActionType; label: string }> = [
   { value: 'all', label: 'All Actions' },
@@ -14,8 +14,10 @@ const ACTION_OPTIONS: Array<{ value: 'all' | ActivityActionType; label: string }
 ]
 
 const ActivityLogPage = () => {
+  const user = useAuthStore((state) => state.user)
   const logs = useActivityLogStore((state) => state.logs)
   const clearLogs = useActivityLogStore((state) => state.clearLogs)
+  const isAdmin = user?.role === 'admin'
 
   const [actionFilter, setActionFilter] = useState<'all' | ActivityActionType>('all')
   const [itemFilter, setItemFilter] = useState('')
@@ -101,8 +103,13 @@ const ActivityLogPage = () => {
           <CardTitle as="h2">Log Viewer ({filteredLogs.length})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {!isAdmin && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Clearing activity logs is restricted to admins.
+            </div>
+          )}
           <div className="flex justify-end">
-            <Button variant="outline" className="h-10" onClick={clearLogs}>
+            <Button variant="outline" className="h-10" onClick={clearLogs} disabled={!isAdmin}>
               Clear All Logs
             </Button>
           </div>

@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components'
 import { runScanSystemSimulation, type SimulationMetrics } from '@/lib/scanSystemSimulator'
-import { useOfflineQueueStore, useApprovalStore, useInventoryStore, useScanModeStore } from '@/store'
+import { useAuthStore, useOfflineQueueStore, useApprovalStore, useInventoryStore, useScanModeStore } from '@/store'
 import { useActivityLogStore } from '@/store/useActivityLogStore'
 import { clearAllLocalDatabase } from '@/lib/db'
 
 const DELIVERY_GROUND_TRUTH_KEY = 'malatang.deliveryGroundTruthSessions.v1'
 
 const AdminPage = () => {
+  const user = useAuthStore((state) => state.user)
   const [simulationRunning, setSimulationRunning] = useState(false)
   const [simulationError, setSimulationError] = useState<string | null>(null)
   const [metrics, setMetrics] = useState<SimulationMetrics | null>(null)
   const [notes, setNotes] = useState<string[]>([])
+  const isAdmin = user?.role === 'admin'
   const unresolvedConflicts = useOfflineQueueStore((state) => state.unresolvedConflicts)
   const conflictResolutionLogs = useOfflineQueueStore((state) => state.conflictResolutionLogs)
   const clearUnresolvedConflicts = useOfflineQueueStore((state) => state.clearUnresolvedConflicts)
@@ -24,6 +26,11 @@ const AdminPage = () => {
   const [resetMessage, setResetMessage] = useState<string | null>(null)
 
   const runSimulation = async (count: number) => {
+    if (!isAdmin) {
+      setSimulationError('Admin access is required for simulation tools.')
+      return
+    }
+
     setSimulationRunning(true)
     setSimulationError(null)
     try {
@@ -38,6 +45,8 @@ const AdminPage = () => {
   }
 
   const handleClearLocalCache = async () => {
+    if (!isAdmin) return
+
     const confirmed = window.confirm('Clear local queue/cache data only? This keeps inventory and approvals.')
     if (!confirmed) return
 
@@ -54,6 +63,8 @@ const AdminPage = () => {
   }
 
   const handleResetApplication = async () => {
+    if (!isAdmin) return
+
     const confirmed = window.confirm(
       'Reset application to fresh start? This removes inventory, queues, approvals, logs, and delivery sessions.'
     )
@@ -85,7 +96,17 @@ const AdminPage = () => {
         <p className="text-[#64748b]">System controls.</p>
       </div>
 
-      <Button variant="default" className="w-full h-12">
+      {!isAdmin && (
+        <Card className="border-amber-200 bg-amber-50/80">
+          <CardContent className="py-4">
+            <p className="text-sm text-amber-900">
+              This section is limited to admin users. Current session: {user?.username || 'unknown'} ({user?.role || 'unknown'}).
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Button variant="default" className="w-full h-12" disabled={!isAdmin}>
         Open Settings
       </Button>
 
@@ -96,13 +117,13 @@ const AdminPage = () => {
         <CardContent className="space-y-3">
           <p className="text-sm text-gray-600">Rapid scans, forced offline failure, reconnect sync, and error-path diagnostics.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Button variant="default" className="h-12" onClick={() => runSimulation(10)} disabled={simulationRunning}>
+            <Button variant="default" className="h-12" onClick={() => runSimulation(10)} disabled={simulationRunning || !isAdmin}>
               Run 10 Scans
             </Button>
-            <Button variant="secondary" className="h-12" onClick={() => runSimulation(20)} disabled={simulationRunning}>
+            <Button variant="secondary" className="h-12" onClick={() => runSimulation(20)} disabled={simulationRunning || !isAdmin}>
               Run 20 Scans
             </Button>
-            <Button variant="outline" className="h-12" onClick={() => runSimulation(30)} disabled={simulationRunning}>
+            <Button variant="outline" className="h-12" onClick={() => runSimulation(30)} disabled={simulationRunning || !isAdmin}>
               Run 30 Scans
             </Button>
           </div>
@@ -170,7 +191,7 @@ const AdminPage = () => {
                 : 'No unresolved conflicts.'}
             </p>
             {unresolvedConflicts.length > 0 && (
-              <Button variant="outline" className="h-10" onClick={clearUnresolvedConflicts}>
+              <Button variant="outline" className="h-10" onClick={clearUnresolvedConflicts} disabled={!isAdmin}>
                 Clear Review Queue
               </Button>
             )}
@@ -201,7 +222,7 @@ const AdminPage = () => {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-gray-700">Recent automatic conflict handling decisions.</p>
             {conflictResolutionLogs.length > 0 && (
-              <Button variant="outline" className="h-10" onClick={clearConflictLogs}>
+              <Button variant="outline" className="h-10" onClick={clearConflictLogs} disabled={!isAdmin}>
                 Clear Logs
               </Button>
             )}
@@ -237,7 +258,7 @@ const AdminPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-[#64748b] text-sm">Manage user access</p>
-            <Button variant="outline" className="w-full h-12">
+            <Button variant="outline" className="w-full h-12" disabled={!isAdmin}>
               Manage Users
             </Button>
           </CardContent>
@@ -250,7 +271,7 @@ const AdminPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-gray-600 text-sm">Adjust app settings</p>
-            <Button variant="secondary" className="w-full h-12">
+            <Button variant="secondary" className="w-full h-12" disabled={!isAdmin}>
               More Settings
             </Button>
           </CardContent>
@@ -263,7 +284,7 @@ const AdminPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-[#64748b] text-sm">Review offline sync</p>
-            <Button variant="outline" className="w-full h-12">
+            <Button variant="outline" className="w-full h-12" disabled={!isAdmin}>
               Sync Options
             </Button>
           </CardContent>
@@ -276,7 +297,7 @@ const AdminPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-[#64748b] text-sm">Manage local data</p>
-            <Button variant="outline" className="w-full h-12">
+            <Button variant="outline" className="w-full h-12" disabled={!isAdmin}>
               Database Tools
             </Button>
           </CardContent>
@@ -289,7 +310,7 @@ const AdminPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-[#64748b] text-sm">Create or restore backup</p>
-            <Button variant="outline" className="w-full h-12">
+            <Button variant="outline" className="w-full h-12" disabled={!isAdmin}>
               Backup Tools
             </Button>
           </CardContent>
@@ -302,7 +323,7 @@ const AdminPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-[#64748b] text-sm">Version and diagnostics</p>
-            <Button variant="outline" className="w-full h-12">
+            <Button variant="outline" className="w-full h-12" disabled={!isAdmin}>
               View Details
             </Button>
           </CardContent>
@@ -348,10 +369,10 @@ const AdminPage = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-col gap-3">
-            <Button variant="secondary" className="w-full h-12" onClick={() => void handleClearLocalCache()}>
+            <Button variant="secondary" className="w-full h-12" onClick={() => void handleClearLocalCache()} disabled={!isAdmin}>
               Clear Local Cache
             </Button>
-            <Button variant="destructive" className="w-full h-12" onClick={() => void handleResetApplication()}>
+            <Button variant="destructive" className="w-full h-12" onClick={() => void handleResetApplication()} disabled={!isAdmin}>
               Reset Application
             </Button>
           </div>

@@ -1,4 +1,5 @@
 export { useInventoryStore } from './useInventoryStore'
+export { useAuthStore } from './useAuthStore'
 export { useOfflineQueueStore } from './useOfflineQueueStore'
 export { useUIFeedbackStore } from './useUIFeedbackStore'
 export { useApprovalStore } from './useApprovalStore'

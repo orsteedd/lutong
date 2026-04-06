@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components'
-import { useInventoryStore, useModeActions, useOfflineQueueStore, useApprovalStore } from '@/store'
+import { useAuthStore, useInventoryStore, useModeActions, useOfflineQueueStore, useApprovalStore } from '@/store'
 import { verifyDeliverySession, type DeliverySessionData } from '@/lib/deliveryVerification'
 
 interface DraftDeliveryLine {
@@ -15,6 +15,7 @@ const DELIVERY_GROUND_TRUTH_KEY = 'malatang.deliveryGroundTruthSessions.v1'
 const DeliveryPage = () => {
   const navigate = useNavigate()
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768)
+  const user = useAuthStore((state) => state.user)
   const { setMode } = useModeActions()
   const pendingScansState = useOfflineQueueStore((state) => state.pendingScans)
   const inventoryItemsState = useInventoryStore((state) => state.items)
@@ -28,6 +29,7 @@ const DeliveryPage = () => {
   const [draftLines, setDraftLines] = useState<DraftDeliveryLine[]>([])
   const [formMessage, setFormMessage] = useState<string | null>(null)
   const [approvalMessage, setApprovalMessage] = useState<string | null>(null)
+  const isAdmin = user?.role === 'admin'
 
   const pendingScans = Array.isArray(pendingScansState) ? pendingScansState : []
   const inventoryItems = Array.isArray(inventoryItemsState) ? inventoryItemsState : []
@@ -296,6 +298,11 @@ const DeliveryPage = () => {
           <CardTitle as="h2">Create Delivery Ground Truth</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!isAdmin && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Ground truth creation and approval submission are restricted to admins.
+            </div>
+          )}
           <p className="text-xs text-[#64748b]">
             Ground truth quantity is defined per delivery session here and is independent from current inventory stock quantity.
           </p>
@@ -339,7 +346,7 @@ const DeliveryPage = () => {
                   value={draftSku}
                   onChange={(e) => setDraftSku(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                  disabled={inventoryItems.length === 0}
+                  disabled={inventoryItems.length === 0 || !isAdmin}
                 >
                   <option value="">{inventoryItems.length === 0 ? 'No inventory items available' : 'Select SKU'}</option>
                   {inventoryItems.map((item) => (
@@ -358,10 +365,10 @@ const DeliveryPage = () => {
                   onChange={(e) => setDraftQty(e.target.value)}
                   placeholder="0"
                   className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
-                  disabled={inventoryItems.length === 0}
+                  disabled={inventoryItems.length === 0 || !isAdmin}
                 />
               </label>
-              <Button type="button" className="h-10" onClick={addDraftLine} disabled={inventoryItems.length === 0}>
+              <Button type="button" className="h-10" onClick={addDraftLine} disabled={inventoryItems.length === 0 || !isAdmin}>
                 Add Item
               </Button>
             </div>
@@ -384,7 +391,7 @@ const DeliveryPage = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="default">{line.expectedQty} expected</Badge>
-                      <Button variant="outline" className="h-8" onClick={() => removeDraftLine(line.sku)}>
+                      <Button variant="outline" className="h-8" onClick={() => removeDraftLine(line.sku)} disabled={!isAdmin}>
                         Remove
                       </Button>
                     </div>
@@ -395,7 +402,7 @@ const DeliveryPage = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button className="h-11" onClick={createDeliveryGroundTruth}>Save Ground Truth Delivery</Button>
+            <Button className="h-11" onClick={createDeliveryGroundTruth} disabled={!isAdmin}>Save Ground Truth Delivery</Button>
             {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
           </div>
         </CardContent>
@@ -623,7 +630,7 @@ const DeliveryPage = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button className="h-11" onClick={submitForApproval}>Submit For Approval</Button>
+            <Button className="h-11" onClick={submitForApproval} disabled={!isAdmin}>Submit For Approval</Button>
             <Button variant="outline" className="h-11" onClick={() => navigate('/approvals')}>
               Open Approval Queue
             </Button>
