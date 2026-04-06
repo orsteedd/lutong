@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useOfflineQueueStore } from '@/store'
+import { useAuthStore } from '@/store/useAuthStore'
 import { Button, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
 
 interface LayoutProps {
@@ -20,10 +21,7 @@ const NAV_ITEMS = [
   { path: '/admin', label: 'Admin', icon: '⚙️' },
 ] as const
 
-const DESKTOP_NAV_ITEMS = NAV_ITEMS.filter((item) => item.path !== '/scan')
-const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) =>
-  ['/', '/scan', '/delivery', '/audit', '/approvals'].includes(item.path)
-)
+const ADMIN_ONLY_PATHS = new Set(['/approvals', '/activity', '/admin'])
 
 const getPageTitle = (pathname: string) => {
   const match = NAV_ITEMS.find((item) => item.path === pathname)
@@ -34,8 +32,12 @@ const Layout = ({ children }: LayoutProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [apiHealth, setApiHealth] = useState<'checking' | 'online' | 'offline'>('checking')
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false)
+  const [retryTick, setRetryTick] = useState(() => Date.now())
   const hasAutoOpenedConflictRef = useRef(false)
   const location = useLocation()
+  const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
+  const isAdmin = user?.role === 'admin'
   const pendingScans = useOfflineQueueStore((state) => state.pendingScans)
   const wastageLogs = useOfflineQueueStore((state) => state.wastageLogs)
   const transferLogs = useOfflineQueueStore((state) => state.transferLogs)
@@ -43,6 +45,8 @@ const Layout = ({ children }: LayoutProps) => {
   const isSyncing = useOfflineQueueStore((state) => state.isSyncing)
   const syncStatus = useOfflineQueueStore((state) => state.syncStatus)
   const syncError = useOfflineQueueStore((state) => state.syncError)
+  const nextRetryAt = useOfflineQueueStore((state) => state.nextRetryAt)
+  const syncRetryCount = useOfflineQueueStore((state) => state.syncRetryCount)
   const syncPendingScans = useOfflineQueueStore((state) => state.syncPendingScans)
   const retrySync = useOfflineQueueStore((state) => state.retrySync)
   const removeScan = useOfflineQueueStore((state) => state.removeScan)
@@ -54,6 +58,18 @@ const Layout = ({ children }: LayoutProps) => {
   const safeUnresolvedConflicts = Array.isArray(unresolvedConflicts) ? unresolvedConflicts : []
 
   const isActive = (path: string) => location.pathname === path
+  const visibleNavItems = useMemo(
+    () => NAV_ITEMS.filter((item) => isAdmin || !ADMIN_ONLY_PATHS.has(item.path)),
+    [isAdmin]
+  )
+  const desktopNavItems = useMemo(
+    () => visibleNavItems.filter((item) => item.path !== '/scan'),
+    [visibleNavItems]
+  )
+  const mobileNavItems = useMemo(
+    () => visibleNavItems.filter((item) => ['/', '/scan', '/delivery', '/audit', '/approvals'].includes(item.path)),
+    [visibleNavItems]
+  )
   const pageTitle = getPageTitle(location.pathname)
 
   const pendingCount = useMemo(
@@ -78,19 +94,50 @@ const Layout = ({ children }: LayoutProps) => {
     return 'synced'
   }, [isSyncing, pendingCount, syncStatus])
 
-  const syncIcon = syncState === 'error' ? '●' : syncState === 'pending' ? '◐' : '●'
-  const syncClass =
+  const systemStatusTone =
+    syncState === 'error' || apiHealth === 'offline'
+      ? 'red'
+      : syncState === 'pending' || apiHealth === 'checking'
+        ? 'amber'
+        : 'green'
+
+  const systemStatusDotClass =
+    systemStatusTone === 'red'
+      ? 'bg-red-500'
+      : systemStatusTone === 'amber'
+        ? 'bg-amber-500'
+        : 'bg-green-500'
+
+  const systemStatusButtonClass =
+    systemStatusTone === 'red'
+      ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+      : systemStatusTone === 'amber'
+        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+        : 'border-[#bfe0d6] bg-white text-[#186c5d] hover:bg-[#f3faf7]'
+
+  const systemStatusDescription =
     syncState === 'error'
-      ? 'text-red-600'
+      ? 'Sync error detected'
       : syncState === 'pending'
-        ? 'text-amber-500'
-        : 'text-green-600'
-  const syncLabel =
-    syncState === 'error'
-      ? 'Sync Error'
-      : syncState === 'pending'
-        ? `Sync Pending (${pendingCount})`
-        : 'Synced'
+        ? `Sync pending for ${pendingCount} record(s)`
+        : apiHealth === 'offline'
+          ? 'API offline'
+          : apiHealth === 'checking'
+            ? 'Checking API connectivity'
+            : 'System ready'
+
+  const retryCountdownSeconds = useMemo(() => {
+    if (!nextRetryAt) return null
+    const remaining = Math.max(0, Math.ceil((nextRetryAt - retryTick) / 1000))
+    return remaining
+  }, [nextRetryAt, retryTick])
+
+  const syncButtonTitle =
+    retryCountdownSeconds && retryCountdownSeconds > 0
+      ? `Auto retry in ${retryCountdownSeconds}s`
+      : syncState === 'error'
+        ? 'Retry sync'
+        : 'Sync pending records'
 
   const handleSyncClick = async () => {
     if (syncState === 'error') {
@@ -130,6 +177,16 @@ const Layout = ({ children }: LayoutProps) => {
   }, [activeUnresolvedConflicts.length, syncStatus])
 
   useEffect(() => {
+    if (!nextRetryAt) return
+
+    const timer = setInterval(() => {
+      setRetryTick(Date.now())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [nextRetryAt])
+
+  useEffect(() => {
     let cancelled = false
     const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
     const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/api/v1/health`
@@ -161,16 +218,6 @@ const Layout = ({ children }: LayoutProps) => {
     }
   }, [])
 
-  const apiHealthClasses =
-    apiHealth === 'online'
-      ? 'text-green-600 border-green-200 bg-green-50'
-      : apiHealth === 'offline'
-        ? 'text-red-600 border-red-200 bg-red-50'
-        : 'text-amber-600 border-amber-200 bg-amber-50'
-
-  const apiHealthLabel =
-    apiHealth === 'online' ? 'API Online' : apiHealth === 'offline' ? 'API Offline' : 'Checking API'
-
   return (
     <div className="min-h-screen px-2 py-2 md:h-screen md:overflow-hidden md:px-5 md:py-5">
       <div className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-[1500px] overflow-hidden rounded-[30px] border border-[#cfe5db] bg-[#edf4f1] shadow-[0_24px_64px_rgba(15,23,42,0.12)] md:min-h-0 md:h-[calc(100vh-2.5rem)]">
@@ -185,7 +232,7 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
           </div>
           <nav className="px-3 py-4 flex-1 space-y-1">
-            {DESKTOP_NAV_ITEMS.map((item) => (
+            {desktopNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -202,9 +249,10 @@ const Layout = ({ children }: LayoutProps) => {
           </nav>
           <div className="px-4 pb-5">
             <div className="rounded-xl border border-[#d6e8e0] bg-white px-3 py-3 text-xs text-[#64748b]">
-              <p className="font-semibold text-[#334155]">Status</p>
-              <p className="mt-1">{syncLabel}</p>
-              <p className="mt-1">{apiHealthLabel}</p>
+              <p className="font-semibold text-[#334155]">System Status</p>
+              <div className="mt-2 inline-flex items-center gap-2" title={systemStatusDescription}>
+                <span className={`h-2.5 w-2.5 rounded-full ${systemStatusDotClass}`} />
+              </div>
             </div>
           </div>
         </aside>
@@ -228,49 +276,50 @@ const Layout = ({ children }: LayoutProps) => {
               <div className="flex items-center gap-2 md:gap-3">
                 <button
                   type="button"
-                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                    syncState === 'error'
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : syncState === 'pending'
-                        ? 'bg-amber-500 text-white hover:bg-amber-600'
-                        : 'bg-[#1e8572] text-white hover:bg-[#186c5d]'
-                  } ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${systemStatusButtonClass} ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
                   onClick={handleSyncClick}
                   disabled={isSyncing}
-                  title={syncState === 'error' ? 'Retry sync' : 'Sync pending records'}
+                  title={syncButtonTitle}
                 >
-                  {isSyncing ? 'Syncing...' : syncState === 'error' ? 'Retry Sync' : 'Sync'}
+                  <span className={`h-2.5 w-2.5 rounded-full ${systemStatusDotClass}`} aria-hidden="true" />
+                  <span>{isSyncing ? 'Syncing...' : 'System Status'}</span>
                 </button>
-
-                <div
-                  className="inline-flex items-center gap-1 rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5"
-                  aria-label={syncLabel}
-                  title={syncLabel}
-                >
-                  <span className={`text-xs ${syncClass}`}>{syncIcon}</span>
-                  <span className="text-[10px] font-medium text-[#64748b] uppercase tracking-wide">
-                    {syncState}
-                  </span>
-                </div>
 
                 {syncError && (
                   <button
                     type="button"
                     className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-700 hover:bg-red-100"
-                    title={syncError}
+                    title={
+                      retryCountdownSeconds && retryCountdownSeconds > 0
+                        ? `${syncError} (auto retry in ${retryCountdownSeconds}s)`
+                        : syncError
+                    }
                     onClick={() => setConflictDialogOpen(true)}
                   >
-                    {activeUnresolvedConflicts.length > 0
-                      ? `Review (${activeUnresolvedConflicts.length})`
-                      : 'Warning'}
+                    {activeUnresolvedConflicts.length > 0 ? `Review (${activeUnresolvedConflicts.length})` : 'Warning'}
                   </button>
                 )}
 
-                <div
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${apiHealthClasses}`}
-                  title="Backend API health"
-                >
-                  {apiHealthLabel}
+                {retryCountdownSeconds !== null && retryCountdownSeconds > 0 && (
+                  <div
+                    className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700"
+                    title="Automatic retry is scheduled"
+                  >
+                    Retry in {retryCountdownSeconds}s ({syncRetryCount})
+                  </div>
+                )}
+
+                <div className="hidden md:flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-[#64748b]">
+                    {user?.username || 'unknown'}
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#334155] hover:bg-[#f3f6f5]"
+                    onClick={logout}
+                  >
+                    Logout
+                  </button>
                 </div>
               </div>
             </div>
@@ -278,7 +327,7 @@ const Layout = ({ children }: LayoutProps) => {
             {mobileMenuOpen && (
               <div className="md:hidden mt-3 border border-[#dbe9e3] rounded-xl bg-white">
                 <nav className="flex flex-col">
-                  {MOBILE_NAV_ITEMS.map((item) => (
+                  {mobileNavItems.map((item) => (
                     <Link
                       key={item.path}
                       to={item.path}
@@ -307,7 +356,7 @@ const Layout = ({ children }: LayoutProps) => {
       </div>
 
       <nav className="sticky bottom-0 mt-2 md:hidden bg-white/95 border border-[#d7e7df] rounded-xl flex gap-0 shadow-sm">
-        {MOBILE_NAV_ITEMS.map((item) => (
+        {mobileNavItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}

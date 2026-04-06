@@ -120,6 +120,13 @@ export const getAllScans = async () => {
   return db.scanQueue.orderBy('timestamp').reverse().toArray()
 }
 
+export const getPendingSyncItems = async (statuses: PendingSyncItem['status'][] = ['pending', 'error']) => {
+  return db.pendingSyncItems
+    .where('status')
+    .anyOf(statuses)
+    .toArray()
+}
+
 export const deleteScan = async (id: string) => {
   await db.scanQueue.delete(id)
 }

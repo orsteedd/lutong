@@ -4,6 +4,7 @@ import {
   clearScans,
   deleteScan,
   getAllScans,
+  getPendingSyncItems,
   logScanEvent,
   saveScan,
   setPendingSyncStatus,
@@ -20,6 +21,29 @@ import { useInventoryStore } from '@/store/useInventoryStore'
 
 const logDbError = (context: string, error: unknown) => {
   console.error(`[offline-queue-store] ${context}`, error)
+}
+
+const AUTO_RETRY_BASE_MS = 5000
+const AUTO_RETRY_MAX_MS = 60000
+let syncRetryTimer: ReturnType<typeof setTimeout> | null = null
+
+const clearSyncRetryTimer = () => {
+  if (!syncRetryTimer) return
+  clearTimeout(syncRetryTimer)
+  syncRetryTimer = null
+}
+
+const isTransientSyncError = (message: string) => {
+  const lower = message.toLowerCase()
+  return (
+    lower.includes('failed to fetch') ||
+    lower.includes('network') ||
+    lower.includes('timeout') ||
+    lower.includes('temporary') ||
+    lower.includes('503') ||
+    lower.includes('502') ||
+    lower.includes('500')
+  )
 }
 
 const PERSISTENCE_FLUSH_MS = 24
@@ -67,9 +91,61 @@ const enqueueBufferedScanPersistence = (scan: PendingScan) => {
 
 const ensureArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
 const ensureStringOrNull = (value: unknown): string | null => (typeof value === 'string' ? value : null)
+const ensureNumber = (value: unknown, fallback = 0) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback
+const ensureNumberOrNull = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null
 const ensureSyncStatus = (value: unknown): 'pending' | 'synced' | 'error' => {
   if (value === 'pending' || value === 'synced' || value === 'error') return value
   return 'synced'
+}
+
+const parsePendingPayloadRecord = (
+  item: { id: string; type: string; payload: string; timestamp: number; error?: string }
+): PendingScan | null => {
+  try {
+    const parsed = JSON.parse(item.payload) as
+      | Partial<PendingScan>
+      | {
+          sku?: string
+          name?: string
+          quantity?: number
+          scanType?: PendingScan['type']
+          metadata?: PendingScan['metadata']
+        }
+
+    const recordType =
+      parsed && typeof parsed === 'object' && 'type' in parsed
+        ? (parsed.type as PendingScan['type'] | undefined)
+        : (parsed as { scanType?: PendingScan['type'] })?.scanType
+
+    const type = recordType || (item.type as PendingScan['type'])
+    const sku = (parsed as { sku?: string })?.sku
+    const name = (parsed as { name?: string })?.name
+    const quantity = (parsed as { quantity?: number })?.quantity
+
+    if (!sku || !name || !Number.isFinite(quantity)) {
+      return null
+    }
+
+    if (type !== 'delivery' && type !== 'transfer' && type !== 'wastage' && type !== 'audit') {
+      return null
+    }
+
+    return {
+      id: item.id,
+      type,
+      sku,
+      name,
+      quantity: Number(quantity),
+      timestamp: item.timestamp,
+      synced: false,
+      metadata: (parsed as { metadata?: PendingScan['metadata'] })?.metadata,
+      error: item.error,
+    }
+  } catch {
+    return null
+  }
 }
 
 export interface PendingScan {
@@ -123,6 +199,9 @@ interface OfflineQueueStore {
   isHydrating: boolean
   syncStatus: 'pending' | 'synced' | 'error'
   syncError: string | null
+  syncRetryCount: number
+  nextRetryAt: number | null
+  lastSyncAttemptAt: number | null
 
   enqueueScan: (scan: PendingScan) => void
   enqueueWastage: (log: WastageLog) => void
@@ -167,6 +246,9 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
       isHydrating: false,
       syncStatus: 'synced',
       syncError: null,
+      syncRetryCount: 0,
+      nextRetryAt: null,
+      lastSyncAttemptAt: null,
 
       enqueueScan: (scan) =>
         set((state) => {
@@ -188,6 +270,7 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
             pendingScans: nextQueue,
             syncStatus: 'pending',
             syncError: null,
+            nextRetryAt: null,
           }
         }),
       enqueueWastage: (log) =>
@@ -342,6 +425,25 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
         set({ isHydrating: true })
         try {
           const scans = await getAllScans()
+
+          if (scans.length === 0) {
+            const pendingItems = await getPendingSyncItems(['pending', 'error'])
+            const recovered = pendingItems
+              .map(parsePendingPayloadRecord)
+              .filter((record): record is PendingScan => record !== null)
+              .sort((a, b) => b.timestamp - a.timestamp)
+
+            if (recovered.length > 0) {
+              set({
+                scanQueue: recovered,
+                pendingScans: recovered,
+                isHydrating: false,
+                syncStatus: 'pending',
+              })
+              return
+            }
+          }
+
           set({
             scanQueue: scans,
             pendingScans: scans,
@@ -358,13 +460,28 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
         const state = get()
         if (state.isSyncing) return
 
+        clearSyncRetryTimer()
+
         const pending = state.scanQueue.filter((scan) => !scan.synced)
         if (pending.length === 0) {
-          set({ syncStatus: 'synced', syncError: null, isSyncing: false })
+          set({
+            syncStatus: 'synced',
+            syncError: null,
+            isSyncing: false,
+            syncRetryCount: 0,
+            nextRetryAt: null,
+            lastSyncAttemptAt: Date.now(),
+          })
           return
         }
 
-        set({ isSyncing: true, syncStatus: 'pending', syncError: null })
+        set({
+          isSyncing: true,
+          syncStatus: 'pending',
+          syncError: null,
+          nextRetryAt: null,
+          lastSyncAttemptAt: Date.now(),
+        })
 
         const inventoryItems = useInventoryStore.getState().items
         const conflictResult = detectAndResolveConflicts(pending, inventoryItems)
@@ -424,6 +541,8 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
                 unresolvedIds.size > 0
                   ? 'Unresolved conflicts require admin review'
                   : null,
+              syncRetryCount: 0,
+              nextRetryAt: null,
               conflictResolutionLogs: [
                 ...conflictResult.resolvedLogs,
                 ...current.conflictResolutionLogs,
@@ -468,6 +587,8 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
               isSyncing: false,
               syncStatus: unresolvedIds.size > 0 ? 'error' : nextQueue.length > 0 ? 'pending' : 'synced',
               syncError: unresolvedIds.size > 0 ? 'Unresolved conflicts require admin review' : null,
+              syncRetryCount: 0,
+              nextRetryAt: null,
               conflictResolutionLogs: [
                 ...conflictResult.resolvedLogs,
                 ...current.conflictResolutionLogs,
@@ -483,6 +604,16 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
               logDbError('setPendingSyncStatus(sync error) failed', err)
             )
           }
+
+          const unresolvedCount = conflictResult.unresolvedConflicts.length
+          const shouldAutoRetry = unresolvedCount === 0 && isTransientSyncError(message)
+          const currentRetryCount = get().syncRetryCount
+          const nextRetryCount = shouldAutoRetry ? currentRetryCount + 1 : 0
+          const retryDelay = Math.min(
+            AUTO_RETRY_BASE_MS * Math.max(1, 2 ** Math.max(0, nextRetryCount - 1)),
+            AUTO_RETRY_MAX_MS
+          )
+          const retryAt = shouldAutoRetry ? Date.now() + retryDelay : null
 
           set((current) => {
             const attemptedIds = new Set(recordsToSync.map((record) => record.id))
@@ -506,7 +637,11 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
               syncError:
                 conflictResult.unresolvedConflicts.length > 0
                   ? `${message}. Unresolved conflicts require admin review.`
-                  : message,
+                  : shouldAutoRetry
+                    ? `${message}. Retrying in ${Math.ceil(retryDelay / 1000)}s.`
+                    : message,
+              syncRetryCount: nextRetryCount,
+              nextRetryAt: retryAt,
               conflictResolutionLogs: [
                 ...conflictResult.resolvedLogs,
                 ...current.conflictResolutionLogs,
@@ -514,11 +649,19 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
               unresolvedConflicts: conflictResult.unresolvedConflicts,
             }
           })
+
+          if (shouldAutoRetry) {
+            clearSyncRetryTimer()
+            syncRetryTimer = setTimeout(() => {
+              void get().retrySync()
+            }, retryDelay)
+          }
         }
       },
 
       retrySync: async () => {
-        set({ syncError: null, syncStatus: 'pending' })
+        clearSyncRetryTimer()
+        set({ syncError: null, syncStatus: 'pending', nextRetryAt: null })
         await get().syncPendingScans()
       },
 
@@ -555,6 +698,9 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
           isHydrating: false,
           syncStatus: ensureSyncStatus(incoming.syncStatus),
           syncError: ensureStringOrNull(incoming.syncError),
+          syncRetryCount: ensureNumber(incoming.syncRetryCount),
+          nextRetryAt: ensureNumberOrNull(incoming.nextRetryAt),
+          lastSyncAttemptAt: ensureNumberOrNull(incoming.lastSyncAttemptAt),
         }
       },
     }

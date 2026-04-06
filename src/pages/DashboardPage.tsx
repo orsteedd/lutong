@@ -96,12 +96,34 @@ const DashboardPage = () => {
         <p className="text-[#64748b]">Inventory status and actions.</p>
       </div>
 
-      {/* Visual Hierarchy Key */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="destructive">Red = Critical</Badge>
-        <Badge variant="warning">Yellow = Warning</Badge>
-        <Badge variant="outline">Neutral = Normal</Badge>
-      </div>
+      {/* Inventory Health Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Inventory Health</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-red-700">Critical</p>
+            <p className="text-3xl font-bold text-red-700">{criticalItems.length}</p>
+            <p className="text-xs text-gray-600">Requires immediate restock</p>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-amber-700">Warning</p>
+            <p className="text-3xl font-bold text-amber-700">{warningItems.length}</p>
+            <p className="text-xs text-gray-600">Monitor stock closely</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-gray-700">Normal</p>
+            <p className="text-3xl font-bold text-black">
+              {Math.max(
+                inventoryStateSnapshot.items.length - criticalItems.length - warningItems.length,
+                0
+              )}
+            </p>
+            <p className="text-xs text-gray-600">Healthy inventory level</p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Key Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -198,9 +220,7 @@ const DashboardPage = () => {
                 </Link>
               </>
             ) : (
-              <div className="rounded-xl border border-[#dceae4] bg-[#f7fcfa] px-3 py-3 text-sm text-[#475569]">
-                Scanner actions are available on mobile only.
-              </div>
+              <></>
             )}
             <Link to="/delivery" className="block">
               <Button variant="secondary" className="w-full h-12">
@@ -220,79 +240,6 @@ const DashboardPage = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Inventory Health Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Inventory Health</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-red-700">Critical</p>
-            <p className="text-3xl font-bold text-red-700">{criticalItems.length}</p>
-            <p className="text-xs text-gray-600">Requires immediate restock</p>
-          </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-amber-700">Warning</p>
-            <p className="text-3xl font-bold text-amber-700">{warningItems.length}</p>
-            <p className="text-xs text-gray-600">Monitor stock closely</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-gray-700">Normal</p>
-            <p className="text-3xl font-bold text-black">
-              {Math.max(
-                inventoryStateSnapshot.items.length - criticalItems.length - warningItems.length,
-                0
-              )}
-            </p>
-            <p className="text-xs text-gray-600">Healthy inventory level</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Inventory State (Offline-First)</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-gray-700">Stock</p>
-            <p className="text-2xl font-bold text-black">{inventoryStateSnapshot.totals.stockQty}</p>
-            <p className="text-xs text-gray-600">Main stock total</p>
-          </div>
-          <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-sky-800">Display</p>
-            <p className="text-2xl font-bold text-sky-700">{inventoryStateSnapshot.totals.displayQty}</p>
-            <p className="text-xs text-gray-600">Transferred in</p>
-          </div>
-          <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-gray-700">Pending</p>
-            <p className="text-2xl font-bold text-secondary">
-              {inventoryStateSnapshot.totals.pendingNet > 0 ? '+' : ''}
-              {inventoryStateSnapshot.totals.pendingNet}
-            </p>
-            <p className="text-xs text-gray-600">Unsynced scan impact</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-gray-700">To Display (Pending)</p>
-            <p className="text-2xl font-bold text-black">{inventoryStateSnapshot.totals.pendingToDisplay}</p>
-            <p className="text-xs text-gray-600">Queued transfers</p>
-          </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-amber-800">Wastage (Locked)</p>
-            <p className="text-2xl font-bold text-amber-700">{inventoryStateSnapshot.totals.wastageLocked}</p>
-            <p className="text-xs text-gray-600">Reserved reduction</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-gray-700">Adjustment</p>
-            <p className="text-2xl font-bold text-black">
-              {inventoryStateSnapshot.totals.adjustmentPendingApproval > 0 ? '+' : ''}
-              {inventoryStateSnapshot.totals.adjustmentPendingApproval}
-            </p>
-            <p className="text-xs text-gray-600">Pending approval</p>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>

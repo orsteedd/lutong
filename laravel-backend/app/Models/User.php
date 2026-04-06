@@ -15,7 +15,13 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
+        'password',
         'role',
+    ];
+
+    protected $hidden = [
+        'password',
     ];
 
     public function scopeAdmin($query)
