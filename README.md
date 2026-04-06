@@ -4,7 +4,7 @@ Offline-first inventory app for fast warehouse and kitchen scanning.
 
 ## Stack
 
-### Frontend
+### Frontend Stack
 
 - React 19
 - Vite
@@ -16,7 +16,7 @@ Offline-first inventory app for fast warehouse and kitchen scanning.
 - jsQR
 - qrcode
 
-### Backend
+### Backend Stack
 
 - Laravel API in [laravel-backend](laravel-backend)
 
@@ -26,11 +26,13 @@ Offline-first inventory app for fast warehouse and kitchen scanning.
 - Uses Zustand stores for app state and offline queue management
 - Supports scan workflows for inventory, delivery, audit, transfer, and wastage flows
 - Syncs queued records to the Laravel API when connectivity is available
+- Supports login and persisted user sessions via Zustand auth store
+- Enforces role-based frontend route access for admin-only pages
 - Uses a custom component library with shadcn-style utilities, not the shadcn/ui package
 
 ## Quick Start
 
-### Frontend
+### Frontend Setup
 
 ```bash
 npm install
@@ -39,9 +41,19 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### Backend
+### Backend Setup
 
 See [laravel-backend/README.md](laravel-backend/README.md) for the Laravel setup instructions.
+
+## Login
+
+- Login page route: `/login`
+- Demo credentials:
+  - Admin: `admin` / `admin1234`
+  - Staff: `staff` / `staff1234`
+
+If backend login is available at `/api/v1/auth/login`, the frontend uses it.
+If backend auth is unavailable, the frontend falls back to local demo credentials.
 
 ## Scripts
 
@@ -52,7 +64,7 @@ See [laravel-backend/README.md](laravel-backend/README.md) for the Laravel setup
 
 ## Project Structure
 
-```
+```text
 src/
 ├── components/    # Reusable UI components
 ├── pages/         # Page components
@@ -77,6 +89,8 @@ src/
 
 - Queue sync logic lives in [src/lib/syncApi.ts](src/lib/syncApi.ts)
 - Sync depends on `VITE_API_BASE_URL` being set for the Laravel backend
+- Transient sync failures auto-retry with exponential backoff
+- Unresolved conflicts remain manual review items
 
 ### UI
 
@@ -84,12 +98,25 @@ src/
 - Components are custom and grouped under [src/components](src/components)
 - The design leans glassmorphism, but it is not a packaged shadcn/ui setup
 
+### Access Control
+
+- Auth state lives in [src/store/useAuthStore.ts](src/store/useAuthStore.ts)
+- Admin-only routes are guarded in [src/App.tsx](src/App.tsx)
+- Admin-only navigation items are hidden for staff users in [src/components/Layout.tsx](src/components/Layout.tsx)
+
+### PWA
+
+- Manifest: [public/manifest.webmanifest](public/manifest.webmanifest)
+- Service worker: [public/sw.js](public/sw.js)
+- Offline fallback page: [public/offline.html](public/offline.html)
+- Registration bootstrap: [src/lib/registerServiceWorker.ts](src/lib/registerServiceWorker.ts)
+
 ## Current Scope
 
-The app is offline-first and API-synced, but it is not yet a fully packaged PWA. There is no service worker or web manifest checked in yet.
+The app is offline-first, has manifest + service worker support, and includes auth + route-level role gating. Backend route-level authorization middleware is still recommended as a hardening step.
 
 ## Next Steps
 
-1. Add manifest and service worker support if you want full PWA installation
+1. Add backend role middleware to enforce admin/staff access server-side
 2. Expand barcode scanning flows in the scan page
-3. Harden Laravel sync and conflict resolution paths
+3. Harden end-to-end auth (real token/session revocation)

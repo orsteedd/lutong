@@ -19,16 +19,32 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate
+php artisan db:seed
 php artisan serve
 ```
 
 If you are also running the frontend, configure `VITE_API_BASE_URL` in the frontend environment so it can reach this API.
+
+## Authentication
+
+- Login endpoint: `POST /api/v1/auth/login`
+- Seeded credentials:
+  - Admin: `admin` / `admin1234`
+  - Staff: `staff` / `staff1234`
+
+If `SESSION_DRIVER=database`, make sure the `sessions` table exists:
+
+```bash
+php artisan session:table
+php artisan migrate
+```
 
 ## API Routes
 
 All API endpoints are versioned under `/api/v1`.
 
 - `GET /api/v1/health` - Health check
+- `POST /api/v1/auth/login` - Login and user profile payload
 - `GET /api/v1/logs` - Activity logs
 - `POST /api/v1/approvals/{type}/{id}` - Handle approvals
 - `POST /api/v1/audits` - Create an audit

@@ -1,31 +1,28 @@
-import { cloneElement, isValidElement, type ReactElement } from 'react'
-import { useAuthStore } from '@/store'
-
-type AdminOnlyChildProps = {
-  disabled?: boolean
-  title?: string
-}
+import type { ReactElement, ReactNode } from 'react'
+import { useAuthStore } from '@/store/useAuthStore'
 
 interface AdminOnlyActionProps {
-  children: ReactElement<AdminOnlyChildProps>
+  children: ReactElement
   title?: string
+  fallback?: ReactNode
 }
 
-const AdminOnlyAction = ({ children, title = 'Admin only action' }: AdminOnlyActionProps) => {
+const AdminOnlyAction = ({
+  children,
+  title = 'Admin permission required.',
+  fallback = null,
+}: AdminOnlyActionProps) => {
   const user = useAuthStore((state) => state.user)
   const isAdmin = user?.role === 'admin'
 
-  if (!isValidElement(children)) {
-    return null
-  }
+  if (isAdmin) return children
 
-  const childProps = children.props
-  const nextDisabled = Boolean(childProps.disabled) || !isAdmin
-
-  return cloneElement(children, {
-    disabled: nextDisabled,
-    title: !isAdmin ? title : childProps.title,
-  })
+  return (
+    <div className="opacity-60 pointer-events-none" title={title} aria-disabled="true">
+      {children}
+      {fallback}
+    </div>
+  )
 }
 
 export default AdminOnlyAction

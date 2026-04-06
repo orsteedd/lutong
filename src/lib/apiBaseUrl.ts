@@ -1,12 +1,10 @@
-const LOCAL_FALLBACK_API_BASE_URL = 'http://127.0.0.1:8000'
+export const getApiBaseUrl = (): string => {
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
+  const normalized = apiBaseUrl.trim().replace(/\/$/, '')
 
-export const getApiBaseUrl = () => {
-  const configured = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
-  const trimmed = configured.trim()
-
-  if (trimmed.length > 0) {
-    return trimmed.replace(/\/$/, '')
+  if (!normalized) {
+    throw new Error('VITE_API_BASE_URL is not set. Laravel backend URL is required.')
   }
 
-  return LOCAL_FALLBACK_API_BASE_URL
+  return normalized
 }

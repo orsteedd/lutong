@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { useAuthStore, useOfflineQueueStore } from '@/store'
+import { useOfflineQueueStore } from '@/store'
+import { useAuthStore } from '@/store/useAuthStore'
 import { Button, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
-import { getApiBaseUrl } from '@/lib/apiBaseUrl'
 
 interface LayoutProps {
   children: ReactNode
@@ -21,6 +21,8 @@ const NAV_ITEMS = [
   { path: '/admin', label: 'Admin', icon: '⚙️' },
 ] as const
 
+const ADMIN_ONLY_PATHS = new Set(['/approvals', '/activity', '/admin'])
+
 const getPageTitle = (pathname: string) => {
   const match = NAV_ITEMS.find((item) => item.path === pathname)
   return match?.label ?? 'Dashboard'
@@ -35,6 +37,7 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const isAdmin = user?.role === 'admin'
   const pendingScans = useOfflineQueueStore((state) => state.pendingScans)
   const wastageLogs = useOfflineQueueStore((state) => state.wastageLogs)
   const transferLogs = useOfflineQueueStore((state) => state.transferLogs)
@@ -55,22 +58,19 @@ const Layout = ({ children }: LayoutProps) => {
   const safeUnresolvedConflicts = Array.isArray(unresolvedConflicts) ? unresolvedConflicts : []
 
   const isActive = (path: string) => location.pathname === path
-  const pageTitle = getPageTitle(location.pathname)
-
-  const visibleNavItems = useMemo(() => {
-    if (user?.role === 'admin') return NAV_ITEMS
-    return NAV_ITEMS.filter((item) => item.path !== '/admin' && item.path !== '/approvals')
-  }, [user?.role])
-
+  const visibleNavItems = useMemo(
+    () => NAV_ITEMS.filter((item) => isAdmin || !ADMIN_ONLY_PATHS.has(item.path)),
+    [isAdmin]
+  )
   const desktopNavItems = useMemo(
     () => visibleNavItems.filter((item) => item.path !== '/scan'),
     [visibleNavItems]
   )
-
   const mobileNavItems = useMemo(
-    () => visibleNavItems.filter((item) => ['/', '/scan', '/delivery', '/audit'].includes(item.path)),
+    () => visibleNavItems.filter((item) => ['/', '/scan', '/delivery', '/audit', '/approvals'].includes(item.path)),
     [visibleNavItems]
   )
+  const pageTitle = getPageTitle(location.pathname)
 
   const pendingCount = useMemo(
     () =>
@@ -170,7 +170,8 @@ const Layout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     let cancelled = false
-    const endpoint = `${getApiBaseUrl()}/api/v1/health`
+    const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
+    const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/api/v1/health`
 
     const checkHealth = async () => {
       if (!endpoint.startsWith('http')) {
@@ -324,19 +325,18 @@ const Layout = ({ children }: LayoutProps) => {
                   {apiHealthLabel}
                 </div>
 
-                <div className="hidden md:inline-flex items-center rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#475569]">
-                  {user?.username || 'user'} • {user?.role || 'staff'}
+                <div className="hidden md:flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-[#64748b]">
+                    {user?.username || 'unknown'}
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#334155] hover:bg-[#f3f6f5]"
+                    onClick={logout}
+                  >
+                    Logout
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  className="rounded-xl border border-[#cfe1d8] bg-white px-3 py-1.5 text-xs font-semibold text-[#334155] hover:bg-[#eef5f2]"
-                  onClick={() => {
-                    void logout()
-                  }}
-                >
-                  Logout
-                </button>
               </div>
             </div>
 

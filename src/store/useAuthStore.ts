@@ -1,115 +1,146 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { fetchAuthenticatedUser, loginWithCredentials, logoutSession, type AuthUser } from '@/lib/authApi'
+
+export type UserRole = 'admin' | 'staff'
+
+export interface AuthUser {
+  id: string
+  username: string
+  name: string
+  role: UserRole
+}
+
+interface LoginResult {
+  ok: boolean
+  error?: string
+}
 
 interface AuthStore {
-  token: string | null
   user: AuthUser | null
-  isAuthenticated: boolean
-  isInitializing: boolean
-  isLoggingIn: boolean
+  token: string | null
+  isLoading: boolean
   error: string | null
-  initializeAuth: () => Promise<void>
-  login: (username: string, password: string) => Promise<boolean>
-  logout: () => Promise<void>
+  login: (username: string, password: string) => Promise<LoginResult>
+  logout: () => void
+  clearError: () => void
 }
+
+const LOCAL_DEMO_USERS: Array<AuthUser & { password: string }> = [
+  {
+    id: 'local-admin-1',
+    username: 'admin',
+    name: 'Admin User',
+    role: 'admin',
+    password: 'admin1234',
+  },
+  {
+    id: 'local-staff-1',
+    username: 'staff',
+    name: 'Staff User',
+    role: 'staff',
+    password: 'staff1234',
+  },
+]
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set, get) => ({
-      token: null,
+    (set) => ({
       user: null,
-      isAuthenticated: false,
-      isInitializing: true,
-      isLoggingIn: false,
+      token: null,
+      isLoading: false,
       error: null,
 
-      initializeAuth: async () => {
-        const token = get().token
-        if (!token) {
-          set({ isAuthenticated: false, user: null, isInitializing: false, error: null })
-          return
-        }
-
-        set({ isInitializing: true, error: null })
-        try {
-          const user = await fetchAuthenticatedUser(token)
-          set({ user, isAuthenticated: true, isInitializing: false, error: null })
-        } catch (error) {
-          set({
-            token: null,
-            user: null,
-            isAuthenticated: false,
-            isInitializing: false,
-            error: error instanceof Error ? error.message : 'Session expired',
-          })
-        }
-      },
-
       login: async (username, password) => {
-        set({ isLoggingIn: true, error: null })
-        try {
-          const result = await loginWithCredentials(username, password)
-          set({
-            token: result.token,
-            user: result.user,
-            isAuthenticated: true,
-            isLoggingIn: false,
-            isInitializing: false,
-            error: null,
-          })
-          return true
-        } catch (error) {
-          set({
-            token: null,
-            user: null,
-            isAuthenticated: false,
-            isLoggingIn: false,
-            isInitializing: false,
-            error: error instanceof Error ? error.message : 'Login failed',
-          })
-          return false
+        const normalizedUsername = username.trim().toLowerCase()
+        if (!normalizedUsername || !password) {
+          const error = 'Username and password are required.'
+          set({ error })
+          return { ok: false, error }
         }
-      },
 
-      logout: async () => {
-        const token = get().token
-        if (token) {
+        set({ isLoading: true, error: null })
+
+        const apiBaseUrl = ((import.meta.env.VITE_API_BASE_URL as string | undefined) || '').trim().replace(/\/$/, '')
+
+        if (apiBaseUrl) {
           try {
-            await logoutSession(token)
+            const response = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
+              body: JSON.stringify({ username: normalizedUsername, password }),
+            })
+
+            const payload = (await response.json()) as {
+              message?: string
+              data?: {
+                token?: string
+                user?: {
+                  id?: number | string
+                  name?: string
+                  username?: string
+                  role?: UserRole
+                }
+              }
+            }
+
+            if (response.ok && payload.data?.user?.username && payload.data?.user?.role) {
+              const user: AuthUser = {
+                id: String(payload.data.user.id ?? normalizedUsername),
+                username: payload.data.user.username,
+                name: payload.data.user.name || payload.data.user.username,
+                role: payload.data.user.role,
+              }
+
+              set({
+                user,
+                token: payload.data.token || null,
+                isLoading: false,
+                error: null,
+              })
+
+              return { ok: true }
+            }
+
+            const error = payload.message || 'Invalid credentials.'
+            set({ isLoading: false, error })
+            return { ok: false, error }
           } catch {
-            // Logout should always clear local session, even when backend is unavailable.
+            // Fall through to local demo auth if backend auth endpoint is unavailable.
           }
         }
 
-        set({
-          token: null,
-          user: null,
-          isAuthenticated: false,
-          isInitializing: false,
-          isLoggingIn: false,
-          error: null,
-        })
+        const matched = LOCAL_DEMO_USERS.find(
+          (candidate) =>
+            candidate.username.toLowerCase() === normalizedUsername && candidate.password === password
+        )
+
+        if (!matched) {
+          const error = 'Invalid credentials.'
+          set({ isLoading: false, error })
+          return { ok: false, error }
+        }
+
+        const { password: _password, ...user } = matched
+        set({ user, token: null, isLoading: false, error: null })
+        return { ok: true }
       },
+
+      logout: () => {
+        set({ user: null, token: null, error: null, isLoading: false })
+      },
+
+      clearError: () => set({ error: null }),
     }),
     {
       name: 'auth-store',
+      version: 1,
       partialize: (state) => ({
-        token: state.token,
         user: state.user,
+        token: state.token,
       }),
-      merge: (persistedState, currentState) => {
-        const incoming = (persistedState as Partial<AuthStore> | undefined) ?? {}
-        return {
-          ...currentState,
-          token: typeof incoming.token === 'string' ? incoming.token : null,
-          user: incoming.user ?? null,
-          isAuthenticated: Boolean(incoming.token && incoming.user),
-          isInitializing: true,
-          isLoggingIn: false,
-          error: null,
-        }
-      },
     }
   )
 )

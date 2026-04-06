@@ -1,9 +1,9 @@
 export { useInventoryStore } from './useInventoryStore'
-export { useAuthStore } from './useAuthStore'
 export { useOfflineQueueStore } from './useOfflineQueueStore'
 export { useUIFeedbackStore } from './useUIFeedbackStore'
 export { useApprovalStore } from './useApprovalStore'
 export { useActivityLogStore } from './useActivityLogStore'
+export { useAuthStore } from './useAuthStore'
 export {
   useScanModeStore,
   useScanMode,
@@ -28,3 +28,4 @@ export type { ApprovalRecord, ApprovalRecordType, ApprovalLineItem } from './use
 export type { ActivityLogEntry, ActivityActionType } from './useActivityLogStore'
 export type { FeedbackLevel, UIAlert } from './useUIFeedbackStore'
 export type { ScanMode, SyncStatus, SyncState, CurrentItem, ScanModeStore } from './useScanModeStore'
+export type { AuthUser, UserRole } from './useAuthStore'

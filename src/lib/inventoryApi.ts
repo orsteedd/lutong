@@ -1,5 +1,4 @@
 import type { InventoryItem } from '@/store/useInventoryStore'
-import { getApiBaseUrl } from './apiBaseUrl'
 
 interface LowStockInventoryRow {
   item_id: number
@@ -22,7 +21,12 @@ const normalizeSku = (row: LowStockInventoryRow) => {
 }
 
 export const fetchInventoryFromApi = async (): Promise<InventoryItem[]> => {
-  const endpoint = `${getApiBaseUrl()}/api/v1/reports/low-stock`
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
+  if (apiBaseUrl.trim() === '') {
+    throw new Error('VITE_API_BASE_URL is not set. Laravel backend URL is required for inventory hydration.')
+  }
+
+  const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/api/v1/reports/low-stock`
   const response = await fetch(endpoint, {
     method: 'GET',
     headers: {

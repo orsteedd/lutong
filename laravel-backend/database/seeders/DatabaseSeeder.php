@@ -16,22 +16,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::query()->updateOrCreate(
-            ['username' => 'admin'],
-            [
-                'name' => 'Admin User',
-                'password' => Hash::make('admin1234'),
-                'role' => 'admin',
-            ]
-        );
+        User::query()->updateOrCreate([
+            'username' => 'admin',
+        ], [
+            'name' => 'Admin User',
+            'role' => 'admin',
+            'password' => Hash::make('admin1234'),
+        ]);
 
-        User::query()->updateOrCreate(
-            ['username' => 'staff'],
-            [
-                'name' => 'Staff User',
-                'password' => Hash::make('staff1234'),
-                'role' => 'staff',
-            ]
-        );
+        User::query()->updateOrCreate([
+            'username' => 'staff',
+        ], [
+            'name' => 'Staff User',
+            'role' => 'staff',
+            'password' => Hash::make('staff1234'),
+        ]);
     }
 }
