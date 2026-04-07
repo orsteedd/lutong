@@ -114,7 +114,7 @@ const ApprovalsPage = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Approval Queue</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Approval Queue</h1>
           <p className="text-[#64748b]">Review pending discrepancies and manual adjustments before applying inventory changes.</p>
         </div>
         <Button
@@ -137,24 +137,24 @@ const ApprovalsPage = () => {
                 value={manualSku}
                 onChange={(e) => setManualSku(e.target.value)}
                 placeholder="SKU"
-                className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2"
+                className="rounded-xl border border-[#d3e6dd] bg-white px-3 py-2"
               />
               <input
                 value={manualDelta}
                 onChange={(e) => setManualDelta(e.target.value)}
                 placeholder="Delta (e.g. -3, 5)"
-                className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2"
+                className="rounded-xl border border-[#d3e6dd] bg-white px-3 py-2"
               />
               <input
                 value={manualReason}
                 onChange={(e) => setManualReason(e.target.value)}
                 placeholder="Reason"
-                className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2 md:col-span-3"
+                className="rounded-xl border border-[#d3e6dd] bg-white px-3 py-2 md:col-span-3"
               />
             </form>
           </DialogBody>
           <DialogFooter>
-            <DialogClose className="h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+            <DialogClose className="h-11 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
               Cancel
             </DialogClose>
             <Button type="submit" form="manual-adjustment-request-form" className="h-11">Submit Pending Request</Button>
@@ -180,7 +180,7 @@ const ApprovalsPage = () => {
               <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#bde1d3] bg-white text-xl text-[#1e8572]">
                 ✓
               </div>
-              <p className="text-base font-semibold text-[#0f172a]">All caught up!</p>
+              <p className="text-base font-semibold text-[#111827]">All caught up!</p>
               <p className="mt-1 text-sm text-[#64748b]">No pending approvals</p>
             </div>
           ) : (
@@ -199,7 +199,7 @@ const ApprovalsPage = () => {
                 <tbody>
                   {pendingQueueRows.map((row) => (
                     <tr key={row.rowId} className="bg-white/80">
-                      <td className="border-b border-[#edf4f1] px-3 py-3 text-sm font-semibold text-[#0f172a]">{row.line.sku}</td>
+                      <td className="border-b border-[#edf4f1] px-3 py-3 text-sm font-semibold text-[#111827]">{row.line.sku}</td>
                       <td className="border-b border-[#edf4f1] px-3 py-3 text-sm text-[#334155]">{row.line.name}</td>
                       <td className="border-b border-[#edf4f1] px-3 py-3 text-sm">
                         <span className={`font-semibold ${row.line.delta > 0 ? 'text-green-700' : 'text-red-700'}`}>
@@ -232,7 +232,7 @@ const ApprovalsPage = () => {
       <details className="group rounded-xl border border-[#dceae4] bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-[#0f172a]">Resolved Records</p>
+            <p className="text-sm font-semibold text-[#111827]">Resolved Records</p>
             <Badge variant="default">{resolvedRecords.length}</Badge>
           </div>
           <span className="text-xs text-[#64748b] transition-transform group-open:rotate-180">▾</span>
@@ -251,7 +251,7 @@ const ApprovalsPage = () => {
           ) : (
             <div className="space-y-2">
               {resolvedRecords.map((record) => (
-                <div key={record.id} className="rounded-lg border border-gray-200 p-3">
+                <div key={record.id} className="rounded-xl border border-gray-200 p-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-black">{record.title}</p>
                     <Badge variant={record.status === 'approved' ? 'success' : 'destructive'}>

@@ -22,7 +22,7 @@ const Toast = forwardRef<HTMLDivElement, ToastProps>(
       <div
         ref={ref}
         className={cn(
-          'flex items-start gap-4 px-4 py-3 rounded-lg shadow-lg border border-gray-700 animate-in slide-in-from-bottom-5 duration-300',
+          'flex items-start gap-4 px-4 py-3 rounded-xl shadow-lg border border-gray-700 animate-in slide-in-from-bottom-5 duration-300',
           variants[variant],
           className
         )}

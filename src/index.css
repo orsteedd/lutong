@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "./components.css";
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 * {
   box-sizing: border-box;
@@ -15,8 +15,14 @@ body {
   margin: 0;
   padding: 0;
   background: radial-gradient(circle at 20% 0%, #e6f5ef 0%, #f3f8f6 40%, #f8fbfa 100%);
-  color: #0f172a;
-  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  color: #111827;
+  font-family: 'Inter', 'Geist', 'Manrope', 'Segoe UI', sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  color: #111827;
 }
 
 #root {

@@ -92,7 +92,7 @@ const DashboardPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Dashboard</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Dashboard</h1>
         <p className="text-[#64748b]">Inventory status and actions.</p>
       </div>
 
@@ -141,7 +141,7 @@ const DashboardPage = () => {
                 {criticalItems.slice(0, 4).map((item) => (
                   <div
                     key={item.itemId}
-                    className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2"
+                    className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2"
                   >
                     <div>
                       <p className="text-sm font-semibold text-black">{item.name}</p>
@@ -156,7 +156,7 @@ const DashboardPage = () => {
                 {warningItems.slice(0, 3).map((item) => (
                   <div
                     key={item.itemId}
-                    className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                    className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
                   >
                     <div>
                       <p className="text-sm font-semibold text-black">{item.name}</p>
@@ -177,19 +177,19 @@ const DashboardPage = () => {
             <CardTitle as="h2">Daily Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2">
               <span className="text-sm text-gray-700">Scans Today</span>
               <span className="text-lg font-bold text-black">{todaysScans}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
               <span className="text-sm text-gray-700">Wastage Today</span>
               <span className="text-lg font-bold text-amber-700">{todaysWastage}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2">
               <span className="text-sm text-gray-700">Transfers Today</span>
               <span className="text-lg font-bold text-black">{todaysTransfers}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-[#bde1d3] bg-[#ebf7f2] px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-[#bde1d3] bg-[#ebf7f2] px-3 py-2">
               <span className="text-sm text-[#475569]">Pending Sync</span>
               <span className="text-lg font-bold text-[#1e8572]">{totalPending}</span>
             </div>
@@ -253,7 +253,7 @@ const DashboardPage = () => {
               {forecastTopRisk.map((row) => (
                 <div
                   key={row.itemId}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 px-3 py-2"
                 >
                   <div>
                     <p className="text-sm font-semibold text-black">{row.name}</p>

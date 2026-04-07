@@ -918,9 +918,9 @@ const ScanPage = () => {
               )}
 
               {currentMode === 'transfer' && (
-                <div className="rounded-lg border border-[#dceae4] bg-[#f7fcfa] px-3 py-2">
+                <div className="rounded-xl border border-[#dceae4] bg-[#f7fcfa] px-3 py-2">
                   <p className="text-xs uppercase tracking-wide text-[#64748b]">Movement</p>
-                  <p className="text-sm font-semibold text-[#0f172a]">
+                  <p className="text-sm font-semibold text-[#111827]">
                     {TRANSFER_FROM_LOCATION} {'->'} {TRANSFER_TO_LOCATION}
                   </p>
                 </div>

@@ -111,14 +111,14 @@ const Layout = ({ children }: LayoutProps) => {
       ? 'bg-red-500'
       : systemStatusTone === 'amber'
         ? 'bg-amber-500'
-        : 'bg-green-500'
+        : 'bg-[#B91C1C]'
 
   const systemStatusButtonClass =
     systemStatusTone === 'red'
       ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
       : systemStatusTone === 'amber'
         ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-        : 'border-[#bfe0d6] bg-white text-[#186c5d] hover:bg-[#f3faf7]'
+        : 'border-[#F3C4C4] bg-[#FDECEC] text-[#B91C1C] hover:bg-[#F9DFDF]'
 
   const systemStatusDescription =
     syncState === 'error'
@@ -226,13 +226,17 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen px-2 py-2 md:h-screen md:overflow-hidden md:px-5 md:py-5">
       <div className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-[1500px] overflow-hidden rounded-[30px] border border-[#cfe5db] bg-[#edf4f1] shadow-[0_24px_64px_rgba(15,23,42,0.12)] md:min-h-0 md:h-[calc(100vh-2.5rem)]">
-        <aside className="hidden md:flex w-[230px] flex-col border-r border-[#d6e8e0] bg-[#f7fbf9]">
-          <div className="px-5 py-6 border-b border-[#e2eee9]">
+        <aside className="hidden md:flex w-[230px] flex-col border-r border-[#e8e5e2] bg-[#FDFCFB]">
+          <div className="px-5 py-6 border-b border-[#ece8e4]">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">📦</span>
+              <img
+                src="/malatang.svg"
+                alt="NO. 1 MALATANG"
+                className="h-11 w-11 rounded-xl object-contain"
+              />
               <div>
-                <h1 className="text-2xl font-extrabold tracking-tight text-[#0f172a]">Malatang</h1>
-                <p className="text-sm text-[#64748b]">Inventory Console</p>
+                <h1 className="text-2xl font-extrabold tracking-tight text-[#111827]">Malatang</h1>
+                <p className="text-sm text-[#111827]">Inventory Console</p>
               </div>
             </div>
           </div>
@@ -243,15 +247,15 @@ const Layout = ({ children }: LayoutProps) => {
                 to={item.path}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
                   isActive(item.path)
-                    ? 'bg-[#d9f1e8] text-[#186c5d] border border-[#b7dcca]'
-                    : 'text-[#475569] hover:bg-[#eef7f3]'
+                    ? 'bg-[#FDECEC] text-[#111827] border border-[#F3C4C4]'
+                    : 'text-[#111827] hover:bg-[#f7f2f1]'
                 }`}
               >
-                <span>{item.icon}</span>
+                <span className="text-[#111827] grayscale">{item.icon}</span>
                 <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                   <span>{item.label}</span>
                   {item.path === '/approvals' && pendingApprovalsCount > 0 && (
-                    <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full border border-[#b7dcca] bg-white px-1.5 py-0.5 text-[11px] font-bold leading-none text-[#186c5d]">
+                    <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full border border-[#F3C4C4] bg-[#FDECEC] px-1.5 py-0.5 text-[11px] font-bold leading-none text-[#B91C1C]">
                       {pendingApprovalsCount}
                     </span>
                   )}
@@ -260,8 +264,8 @@ const Layout = ({ children }: LayoutProps) => {
             ))}
           </nav>
           <div className="px-4 pb-5">
-            <div className="rounded-xl border border-[#d6e8e0] bg-white px-3 py-3 text-xs text-[#64748b]">
-              <p className="font-semibold text-[#334155]">System Status</p>
+            <div className="rounded-xl border border-[#e4dfdc] bg-white px-3 py-3 text-xs text-[#111827]">
+              <p className="font-semibold text-[#111827]">System Status</p>
               <div className="mt-2 inline-flex items-center gap-2" title={systemStatusDescription}>
                 <span className={`h-2.5 w-2.5 rounded-full ${systemStatusDotClass}`} />
               </div>
@@ -274,13 +278,13 @@ const Layout = ({ children }: LayoutProps) => {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <button
-                  className="md:hidden text-2xl p-2 rounded-lg hover:bg-[#e8f3ee]"
+                  className="md:hidden text-2xl p-2 rounded-xl hover:bg-[#e8f3ee]"
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 >
                   ☰
                 </button>
                 <div className="min-w-0">
-                  <h2 className="text-xl md:text-2xl font-bold tracking-tight text-[#0f172a] truncate">{pageTitle}</h2>
+                  <h2 className="text-xl md:text-2xl font-bold tracking-tight text-[#111827] truncate">{pageTitle}</h2>
                   <p className="text-xs text-[#64748b]">Operational workspace</p>
                 </div>
               </div>
@@ -346,8 +350,8 @@ const Layout = ({ children }: LayoutProps) => {
                       onClick={() => setMobileMenuOpen(false)}
                       className={`px-4 py-3 border-b border-[#eef3f1] font-medium transition-all ${
                         isActive(item.path)
-                          ? 'bg-[#d9f1e8] text-[#186c5d]'
-                          : 'text-[#475569]'
+                          ? 'bg-[#FDECEC] text-[#B91C1C]'
+                          : 'text-[#111827]'
                       }`}
                     >
                       <span className="mr-2">{item.icon}</span>
@@ -374,8 +378,8 @@ const Layout = ({ children }: LayoutProps) => {
             to={item.path}
             className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-all ${
               isActive(item.path)
-                ? 'text-[#1e8572] bg-[#e6f4ef]'
-                : 'text-[#64748b] hover:text-[#0f172a]'
+                ? 'text-[#B91C1C] bg-[#FDECEC]'
+                : 'text-[#64748b] hover:text-[#111827]'
             }`}
           >
             <span className="text-xl">{item.icon}</span>
@@ -391,7 +395,7 @@ const Layout = ({ children }: LayoutProps) => {
           </DialogHeader>
           <DialogBody>
             {activeUnresolvedConflicts.length === 0 ? (
-              <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
                 No unresolved conflicts remain. You can retry sync now.
               </div>
             ) : (
@@ -399,7 +403,7 @@ const Layout = ({ children }: LayoutProps) => {
                 {activeUnresolvedConflicts.map((conflict) => (
                   <div
                     key={conflict.id}
-                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -422,19 +426,19 @@ const Layout = ({ children }: LayoutProps) => {
             )}
           </DialogBody>
           <DialogFooter>
-            <DialogClose className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+            <DialogClose className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
               Close
             </DialogClose>
             <button
               type="button"
-              className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100"
+              className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100"
               onClick={handleClearConflictList}
             >
               Dismiss List
             </button>
             <button
               type="button"
-              className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:opacity-90"
+              className="h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:opacity-90"
               onClick={() => {
                 void retrySync()
               }}

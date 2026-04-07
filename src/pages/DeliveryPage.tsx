@@ -331,7 +331,7 @@ const DeliveryPage = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Delivery Verification</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Delivery Verification</h1>
           <p className="text-[#64748b]">Fast scan verification with real-time discrepancy detection.</p>
         </div>
 
@@ -351,7 +351,7 @@ const DeliveryPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {!isAdmin && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Ground truth creation and approval submission are restricted to admins.
               </div>
             )}
@@ -362,7 +362,7 @@ const DeliveryPage = () => {
                   type="text"
                   value={nextDeliveryId}
                   readOnly
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
                 />
               </label>
               <label className="text-sm text-[#334155]">
@@ -372,7 +372,7 @@ const DeliveryPage = () => {
                   value={newSupplier}
                   onChange={(e) => setNewSupplier(e.target.value)}
                   placeholder="Supplier name"
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                 />
               </label>
               <label className="text-sm text-[#334155]">
@@ -381,20 +381,20 @@ const DeliveryPage = () => {
                   type="date"
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                 />
               </label>
             </div>
 
             <div className="rounded-xl border border-[#dceae4] bg-[#f7fcfa] p-3 space-y-3">
-              <p className="text-sm font-semibold text-[#0f172a]">Expected Items</p>
+              <p className="text-sm font-semibold text-[#111827]">Expected Items</p>
               <div className="grid grid-cols-1 md:grid-cols-[1fr_160px_auto] gap-3 items-end">
                 <label className="text-sm text-[#334155]">
                   Item
                   <select
                     value={draftSku}
                     onChange={(e) => setDraftSku(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                    className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                     disabled={inventoryItems.length === 0 || !isAdmin}
                   >
                     <option value="">{inventoryItems.length === 0 ? 'No inventory items available' : 'Select SKU'}</option>
@@ -413,7 +413,7 @@ const DeliveryPage = () => {
                     value={draftQty}
                     onChange={(e) => setDraftQty(e.target.value)}
                     placeholder="0"
-                    className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                    className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                     disabled={inventoryItems.length === 0 || !isAdmin}
                   />
                 </label>
@@ -435,7 +435,7 @@ const DeliveryPage = () => {
               ) : (
                 <div className="space-y-2">
                   {draftLines.map((line) => (
-                    <div key={line.sku} className="flex items-center justify-between rounded-lg border border-[#d6e8e0] bg-white px-3 py-2">
+                    <div key={line.sku} className="flex items-center justify-between rounded-xl border border-[#d6e8e0] bg-white px-3 py-2">
                       <div>
                         <p className="text-sm font-semibold text-black">{line.sku}</p>
                         <p className="text-xs text-gray-600">{line.name}</p>
@@ -469,7 +469,7 @@ const DeliveryPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Delivery Verification</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Delivery Verification</h1>
         <p className="text-[#64748b]">Fast scan verification with real-time discrepancy detection.</p>
       </div>
 
@@ -478,7 +478,7 @@ const DeliveryPage = () => {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-wide text-[#1e8572]">Live Verification Bar</p>
-              <h2 className="text-xl font-bold text-[#0f172a]">{activeSession?.id}</h2>
+              <h2 className="text-xl font-bold text-[#111827]">{activeSession?.id}</h2>
               <p className="text-sm text-[#64748b]">
                 {activeSession?.date} • {activeSession?.supplier} • {activeSession?.expected.length} expected SKUs
               </p>
@@ -498,13 +498,13 @@ const DeliveryPage = () => {
               <span className="text-[#1e8572]">●</span> Expected {report.totals.totalExpectedQty}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-3 py-1.5 text-xs font-medium text-[#334155]">
-              <span className="text-[#1e8572]">●</span> Actual {report.totals.totalActualQty}
+              <span className="text-[#7F1D1D]">●</span> Actual {report.totals.totalActualQty}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-3 py-1.5 text-xs font-medium text-[#334155]">
-              <span className="text-[#1e8572]">●</span> Scans {scansForSessionCount}
+              <span className="text-[#7F1D1D]">●</span> Scans {scansForSessionCount}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-3 py-1.5 text-xs font-medium text-[#334155]">
-              <span className="text-[#1e8572]">●</span> {report.totals.discrepancyCount} discrepancies
+              <span className="text-[#7F1D1D]">●</span> {report.totals.discrepancyCount} discrepancies
             </span>
           </div>
 
@@ -512,7 +512,7 @@ const DeliveryPage = () => {
             <div className="rounded-xl border border-[#dceae4] bg-white p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-[#0f172a]">Verification Snapshot</p>
+                  <p className="text-sm font-semibold text-[#111827]">Verification Snapshot</p>
                   <p className="text-xs text-[#64748b]">Matched, shortage, and over-delivery are summarized below.</p>
                 </div>
                 <Badge variant="warning">Pending Approval</Badge>
@@ -528,13 +528,13 @@ const DeliveryPage = () => {
                       }}
                     />
                     <div
-                      className="bg-amber-500"
+                      className="bg-[#B91C1C]"
                       style={{
                         width: `${Math.max(report.totals.shortageCount, 0) / Math.max(report.rows.length || 1, 1) * 100}%`,
                       }}
                     />
                     <div
-                      className="bg-red-500"
+                      className="bg-[#B45309]"
                       style={{
                         width: `${Math.max(report.totals.overDeliveryCount + report.totals.wrongItemCount, 0) / Math.max(report.rows.length || 1, 1) * 100}%`,
                       }}
@@ -543,38 +543,38 @@ const DeliveryPage = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
-                  <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                  <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2">
                     <p className="text-[11px] uppercase tracking-wide text-green-700">Matched</p>
                     <p className="font-semibold text-green-700">{report.totals.matchedCount}</p>
                   </div>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                    <p className="text-[11px] uppercase tracking-wide text-amber-700">Shortage</p>
-                    <p className="font-semibold text-amber-700">{report.totals.shortageCount}</p>
+                  <div className="rounded-xl border border-[#F3C4C4] bg-[#FDECEC] px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-[#B91C1C]">Shortage</p>
+                    <p className="font-semibold text-[#B91C1C]">{report.totals.shortageCount}</p>
                   </div>
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-                    <p className="text-[11px] uppercase tracking-wide text-red-700">Over-Delivery</p>
-                    <p className="font-semibold text-red-700">{report.totals.overDeliveryCount}</p>
+                  <div className="rounded-xl border border-[#F4C08A] bg-[#FFF4E8] px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-[#B45309]">Over-Delivery</p>
+                    <p className="font-semibold text-[#B45309]">{report.totals.overDeliveryCount}</p>
                   </div>
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-                    <p className="text-[11px] uppercase tracking-wide text-red-700">Wrong Item</p>
-                    <p className="font-semibold text-red-700">{report.totals.wrongItemCount}</p>
+                  <div className="rounded-xl border border-[#F4C08A] bg-[#FFF4E8] px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-[#B45309]">Wrong Item</p>
+                    <p className="font-semibold text-[#B45309]">{report.totals.wrongItemCount}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-[#dceae4] bg-white p-3">
-              <p className="text-sm font-semibold text-[#0f172a]">Live Rows</p>
+              <p className="text-sm font-semibold text-[#111827]">Live Rows</p>
               <div className="mt-3 max-h-[280px] space-y-2 overflow-auto pr-1">
                 {report.rows.map((row) => (
                   <div
                     key={row.sku}
-                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${
                       row.status === 'matched'
                         ? 'border-green-200 bg-green-50'
                         : row.status === 'partial'
-                          ? 'border-amber-200 bg-amber-50'
-                          : 'border-red-200 bg-red-50'
+                          ? 'border-[#F3C4C4] bg-[#FDECEC]'
+                          : 'border-[#F4C08A] bg-[#FFF4E8]'
                     }`}
                   >
                     <div>
@@ -583,7 +583,7 @@ const DeliveryPage = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-600">Exp {row.expectedQty} • Act {row.actualQty}</p>
-                      <p className={`text-xs font-semibold ${row.status === 'matched' ? 'text-green-700' : row.status === 'partial' ? 'text-amber-700' : 'text-red-700'}`}>
+                      <p className={`text-xs font-semibold ${row.status === 'matched' ? 'text-green-700' : row.status === 'partial' ? 'text-[#B91C1C]' : 'text-[#B45309]'}`}>
                         {row.status === 'matched'
                           ? 'Matched'
                           : row.status === 'partial'
@@ -595,11 +595,11 @@ const DeliveryPage = () => {
                 ))}
 
                 {report.wrongItems.length > 0 && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-700">Wrong Item Scans</p>
                     <div className="space-y-2">
                       {report.wrongItems.map((wrong) => (
-                        <div key={wrong.sku} className="flex items-center justify-between rounded-lg border border-red-200 bg-white px-3 py-2 text-sm">
+                        <div key={wrong.sku} className="flex items-center justify-between rounded-xl border border-red-200 bg-white px-3 py-2 text-sm">
                           <div>
                             <p className="font-semibold text-black">{wrong.sku}</p>
                             <p className="text-xs text-red-700">Not in expected delivery list</p>
@@ -656,13 +656,13 @@ const DeliveryPage = () => {
         <div className="flex flex-wrap items-center gap-2 border-b border-[#dceae4] px-4 py-3">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">Total Performance</span>
           <span className="inline-flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-3 py-1.5 text-xs font-medium text-[#334155]">
-            Sessions Pending <strong className="text-[#0f172a]">{totalPerformance.pendingCount}</strong>
+            Sessions Pending <strong className="text-[#111827]">{totalPerformance.pendingCount}</strong>
           </span>
           <span className="inline-flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-3 py-1.5 text-xs font-medium text-[#334155]">
-            Completed <strong className="text-[#0f172a]">{totalPerformance.completedCount}</strong>
+            Completed <strong className="text-[#111827]">{totalPerformance.completedCount}</strong>
           </span>
           <span className="inline-flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-3 py-1.5 text-xs font-medium text-[#334155]">
-            Total Discrepancies <strong className="text-[#0f172a]">{totalPerformance.discrepancyCount}</strong>
+            Total Discrepancies <strong className="text-[#111827]">{totalPerformance.discrepancyCount}</strong>
           </span>
         </div>
         <CardContent className="p-0">
@@ -683,7 +683,7 @@ const DeliveryPage = () => {
                   {recentDeliveries.map(({ delivery, statusLabel }) => (
                     <tr key={delivery.id} className="border-t border-[#dceae4] bg-white/70">
                       <td className="px-4 py-4 align-middle">
-                        <div className="font-semibold text-[#0f172a]">{delivery.id}</div>
+                        <div className="font-semibold text-[#111827]">{delivery.id}</div>
                         <div className="text-xs text-[#64748b]">{delivery.date}</div>
                       </td>
                       <td className="px-4 py-4 align-middle text-sm text-[#334155]">{delivery.supplier}</td>

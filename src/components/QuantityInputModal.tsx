@@ -82,7 +82,7 @@ const QuantityInputModal = ({
                   key={qty}
                   type="button"
                   onClick={() => setQuantity(qty.toString())}
-                  className="h-11 px-3 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-50 active:bg-primary active:text-white transition-all"
+                  className="h-11 px-3 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 active:bg-primary active:text-white transition-all"
                 >
                   {qty}
                 </button>

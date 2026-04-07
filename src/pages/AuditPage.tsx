@@ -95,7 +95,7 @@ const AuditPage = () => {
   }, [inventoryItems, pendingScans])
 
   const selectedAudit = auditSessions.find((audit) => audit.id === selectedAuditId) ?? auditSessions[0]
-  const hasStartedAudit = selectedSection || selectedAudit
+  const hasActiveSession = Boolean(selectedAudit)
   const report = useMemo(
     () =>
       selectedAudit
@@ -187,7 +187,7 @@ const AuditPage = () => {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a]">Audit</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#111827]">Audit</h1>
           <span
             title="Discrepancies are determined by comparing physical counts against system inventory. Audits help verify stock accuracy across all warehouse sections."
             className="inline-flex items-center justify-center w-6 h-6 text-sm font-bold text-[#64748b] border border-[#dceae4] rounded-full hover:bg-[#f7fcfa] cursor-help transition-colors"
@@ -195,36 +195,7 @@ const AuditPage = () => {
             ?
           </span>
         </div>
-        <p className="text-[#64748b]">Select a section to audit, count items, and compare with system.</p>
       </div>
-
-      {/* Hero Section: Sections to Audit */}
-      <Card className="border-[#bde1d3] bg-[#ebf7f2]">
-        <CardHeader>
-          <CardTitle as="h2">Start Audit</CardTitle>
-          <p className="text-sm text-[#64748b] mt-2">Choose a section to begin the physical count verification.</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {auditSections.map((section) => (
-              <button
-                key={section}
-                type="button"
-                onClick={() => setSelectedSection(section)}
-                className={`rounded-xl border-2 p-5 text-left transition-all ${
-                  selectedSection === section
-                    ? 'border-[#1e8572] bg-white shadow-lg'
-                    : 'border-[#dceae4] bg-white hover:border-[#1e8572] hover:shadow-md'
-                }`}
-              >
-                <div className="text-3xl mb-3">{getSectionIcon(section)}</div>
-                <p className="font-semibold text-[#0f172a] text-lg">{section}</p>
-                <p className="text-xs text-[#64748b] mt-1">Start new audit</p>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Quick Actions */}
       {isMobileView && (
@@ -238,33 +209,34 @@ const AuditPage = () => {
         </div>
       )}
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary mb-2">{auditSessions.length}</div>
-              <p className="text-gray-600">Audits This Month</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-red-700 mb-2">{report.totals.missingCount}</div>
-              <p className="text-gray-600">Missing Stock</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-amber-700 mb-2">{report.totals.excessCount}</div>
-              <p className="text-gray-600">Excess Stock</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {hasActiveSession && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary mb-2">{auditSessions.length}</div>
+                <p className="text-gray-600">Audits This Month</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-[#B91C1C] mb-2">{report.totals.missingCount}</div>
+                <p className="text-gray-600">Missing Stock</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-[#B45309] mb-2">{report.totals.excessCount}</div>
+                <p className="text-gray-600">Excess Stock</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Audit History Table */}
       <Card>
@@ -282,12 +254,12 @@ const AuditPage = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#dceae4]">
-                    <th className="text-left py-3 px-3 font-semibold text-[#0f172a]">Session ID</th>
-                    <th className="text-left py-3 px-3 font-semibold text-[#0f172a]">Last Scanned</th>
-                    <th className="text-center py-3 px-3 font-semibold text-[#0f172a]">Scans</th>
-                    <th className="text-center py-3 px-3 font-semibold text-[#0f172a]">Discrepancies</th>
-                    <th className="text-center py-3 px-3 font-semibold text-[#0f172a]">Status</th>
-                    <th className="text-right py-3 px-3 font-semibold text-[#0f172a]">Action</th>
+                    <th className="text-left py-3 px-3 font-semibold text-[#111827]">Session ID</th>
+                    <th className="text-left py-3 px-3 font-semibold text-[#111827]">Last Scanned</th>
+                    <th className="text-center py-3 px-3 font-semibold text-[#111827]">Scans</th>
+                    <th className="text-center py-3 px-3 font-semibold text-[#111827]">Discrepancies</th>
+                    <th className="text-center py-3 px-3 font-semibold text-[#111827]">Status</th>
+                    <th className="text-right py-3 px-3 font-semibold text-[#111827]">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#dceae4]">
@@ -300,7 +272,7 @@ const AuditPage = () => {
                             setSelectedAuditId(audit.id)
                             setActiveDiscrepancyIndex(0)
                           }}
-                          className="font-semibold text-primary hover:underline text-left"
+                          className="inline-flex items-center rounded-xl bg-[#B91C1C] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#7F1D1D]"
                         >
                           {audit.id}
                         </button>
@@ -344,7 +316,7 @@ const AuditPage = () => {
         </CardContent>
       </Card>
 
-      {hasStartedAudit && (
+      {hasActiveSession && (
       <>
       <Card className={report.discrepancies.length > 0 ? 'border-red-200' : 'border-green-200'}>
         <CardHeader>
@@ -352,25 +324,12 @@ const AuditPage = () => {
         </CardHeader>
         <CardContent>
           {!isAdmin && (
-            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               Approval submission is restricted to admins.
             </div>
           )}
-          <div className="mb-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-red-100 text-red-800 px-2 py-1">Red = Missing Stock</span>
-            <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-1">Yellow = Excess Stock</span>
-            <span className="rounded-full bg-gray-100 text-gray-700 px-2 py-1">All discrepancies are pending approval</span>
-          </div>
-
-          {!selectedAudit && (
-            <div className="rounded-lg border border-[#dceae4] bg-[#f7fcfa] p-4 mb-3">
-              <p className="font-semibold text-[#334155]">No audit session selected.</p>
-              <p className="text-sm text-[#64748b]">Run an audit scan first to generate a session and comparison report.</p>
-            </div>
-          )}
-
           {report.discrepancies.length === 0 ? (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+            <div className="rounded-xl border border-green-200 bg-green-50 p-4">
               <p className="font-semibold text-green-800">No discrepancies found.</p>
               <p className="text-sm text-green-700">System quantity and physical count are currently aligned.</p>
               <p className="text-xs text-green-700 mt-1">
@@ -379,7 +338,7 @@ const AuditPage = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 px-3 py-2">
                 <p className="text-sm text-gray-700">
                   Discrepancies: <span className="font-semibold text-black">{report.discrepancies.length}</span>
                 </p>
@@ -401,10 +360,10 @@ const AuditPage = () => {
 
               {activeDiscrepancy && (
                 <div
-                  className={`rounded-lg border p-3 ${
+                  className={`rounded-xl border p-3 ${
                     activeDiscrepancy.difference_type === 'missing'
-                      ? 'border-red-200 bg-red-50'
-                      : 'border-amber-200 bg-amber-50'
+                      ? 'border-[#F3C4C4] bg-[#FDECEC]'
+                      : 'border-[#F4C08A] bg-[#FFF4E8]'
                   }`}
                 >
                   <p className="text-xs uppercase tracking-wide text-gray-600">
@@ -433,12 +392,12 @@ const AuditPage = () => {
                     key={`${item.item_id}-${item.sku}`}
                     type="button"
                     onClick={() => setActiveDiscrepancyIndex(index)}
-                    className={`rounded-lg border px-2 py-1 text-xs font-medium ${
+                    className={`rounded-xl border px-2 py-1 text-xs font-medium ${
                       index === activeDiscrepancyIndex
-                        ? 'border-primary bg-primary/10 text-primary'
+                        ? 'border-[#B91C1C] bg-[#FDECEC] text-[#B91C1C]'
                         : item.difference_type === 'missing'
-                          ? 'border-red-200 bg-red-50 text-red-700'
-                          : 'border-amber-200 bg-amber-50 text-amber-700'
+                          ? 'border-[#F3C4C4] bg-[#FDECEC] text-[#B91C1C]'
+                          : 'border-[#F4C08A] bg-[#FFF4E8] text-[#B45309]'
                     }`}
                   >
                     {item.sku}
@@ -450,11 +409,11 @@ const AuditPage = () => {
                 {report.discrepancies.map((row, index) => (
                   <div
                     key={`${row.item_id}-${row.sku}-row`}
-                    className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2 ${
                       row.difference_type === 'missing'
-                        ? 'border-red-200 bg-red-50'
-                        : 'border-amber-200 bg-amber-50'
-                    } ${index === safeActiveIndex ? 'ring-2 ring-primary/30' : ''}`}
+                        ? 'border-[#F3C4C4] bg-[#FDECEC]'
+                        : 'border-[#F4C08A] bg-[#FFF4E8]'
+                    } ${index === safeActiveIndex ? 'ring-2 ring-[#B91C1C]/30' : ''}`}
                   >
                     <div>
                       <p className="font-medium text-black text-sm">{row.name}</p>
@@ -465,7 +424,7 @@ const AuditPage = () => {
                       <p className="text-black">system_qty {row.system_qty} • actual_qty {row.actual_qty}</p>
                       <p
                         className={`font-semibold ${
-                          row.difference_type === 'missing' ? 'text-red-700' : 'text-amber-700'
+                          row.difference_type === 'missing' ? 'text-[#B91C1C]' : 'text-[#B45309]'
                         }`}
                       >
                         difference {row.difference > 0 ? '+' : ''}{row.difference}
@@ -489,7 +448,7 @@ const AuditPage = () => {
           ) : (
             <div className="space-y-2">
               {report.discrepancies.map((row) => (
-                <div key={`${row.item_id}-${row.sku}-output`} className="rounded-lg border border-gray-200 p-3">
+                <div key={`${row.item_id}-${row.sku}-output`} className="rounded-xl border border-gray-200 p-3">
                   <p className="font-mono text-xs text-gray-700">
                     item_id: {row.item_id} | system_qty: {row.system_qty} | actual_qty: {row.actual_qty} | difference: {row.difference > 0 ? '+' : ''}{row.difference}
                   </p>
@@ -503,16 +462,31 @@ const AuditPage = () => {
       </>
       )}
 
-      {!hasStartedAudit && (
-      <Card className="border-[#dceae4] bg-[#f7fcfa]">
-        <CardContent className="pt-6">
-          <div className="text-center">
-            <p className="text-sm font-semibold text-[#334155] mb-2">Ready to Audit?</p>
-            <p className="text-xs text-[#64748b]">Select a section above or open an existing audit session to begin verification.</p>
+      <Card className="border-[#bde1d3] bg-[#ebf7f2]">
+        <CardHeader>
+          <CardTitle as="h2">Sections to Audit</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {auditSections.map((section) => (
+              <button
+                key={section}
+                type="button"
+                onClick={() => setSelectedSection(section)}
+                className={`rounded-xl border-2 p-5 text-left transition-all ${
+                  selectedSection === section
+                    ? 'border-[#B91C1C] bg-white shadow-lg'
+                    : 'border-[#dceae4] bg-white hover:border-[#B91C1C] hover:shadow-md'
+                }`}
+              >
+                <div className="text-3xl mb-3">{getSectionIcon(section)}</div>
+                <p className="font-semibold text-[#111827] text-lg">{section}</p>
+                <p className="text-xs text-[#64748b] mt-1">Start new audit</p>
+              </button>
+            ))}
           </div>
         </CardContent>
       </Card>
-      )}
 
     </div>
   )

@@ -343,7 +343,7 @@ const InventoryPage = () => {
       <div>
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Inventory</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Inventory</h1>
           </div>
 
           <div className="flex flex-wrap gap-2 md:justify-end">
@@ -394,7 +394,7 @@ const InventoryPage = () => {
           </DialogHeader>
           <DialogBody className="space-y-4">
             {!isAdmin && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Inventory write actions are restricted to admins.
               </div>
             )}
@@ -405,7 +405,7 @@ const InventoryPage = () => {
                   type="text"
                   value={nextSku}
                   readOnly
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
                 />
               </label>
               <label className="text-sm text-[#334155]">
@@ -415,7 +415,7 @@ const InventoryPage = () => {
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   placeholder="Item name"
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -426,7 +426,7 @@ const InventoryPage = () => {
                   value={draftCategory}
                   onChange={(e) => setDraftCategory(e.target.value)}
                   placeholder="Category"
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -440,7 +440,7 @@ const InventoryPage = () => {
                   value={draftUnit}
                   onChange={(e) => setDraftUnit(e.target.value)}
                   placeholder="pcs, kg, bottle"
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -451,7 +451,7 @@ const InventoryPage = () => {
                   min={0}
                   value={draftQuantity}
                   onChange={(e) => setDraftQuantity(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -462,7 +462,7 @@ const InventoryPage = () => {
                   min={0}
                   value={draftSafetyBuffer}
                   onChange={(e) => setDraftSafetyBuffer(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -471,7 +471,7 @@ const InventoryPage = () => {
             {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
           </DialogBody>
           <DialogFooter>
-            <DialogClose className="h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+            <DialogClose className="h-11 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
               Cancel
             </DialogClose>
             <AdminOnlyAction title="Only admins can add inventory items.">
@@ -502,7 +502,7 @@ const InventoryPage = () => {
                 <select
                   value={operationSku}
                   onChange={(e) => setOperationSku(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 >
                   <option value="">Select existing item</option>
@@ -519,7 +519,7 @@ const InventoryPage = () => {
                 <select
                   value={operationMode}
                   onChange={(e) => setOperationMode(e.target.value as InventoryOperationMode)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 >
                   <option value="delivery">Delivery (+Stock)</option>
@@ -535,7 +535,7 @@ const InventoryPage = () => {
                   min={1}
                   value={operationQty}
                   onChange={(e) => setOperationQty(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -554,7 +554,7 @@ const InventoryPage = () => {
                   type="text"
                   value={wastageReason}
                   onChange={(e) => setWastageReason(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -569,7 +569,7 @@ const InventoryPage = () => {
             {operationMessage && <p className="text-xs text-[#64748b]">{operationMessage}</p>}
           </DialogBody>
           <DialogFooter>
-            <DialogClose className="h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+            <DialogClose className="h-11 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
               Close
             </DialogClose>
           </DialogFooter>
@@ -597,7 +597,7 @@ const InventoryPage = () => {
                   value={stockSearch}
                   onChange={(e) => setStockSearch(e.target.value)}
                   placeholder="Search name or SKU"
-                  className="h-10 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 text-sm text-black placeholder:text-[#94a3b8]"
+                  className="h-10 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 text-sm text-black placeholder:text-[#94a3b8]"
                 />
               </label>
               <label className="sm:w-48">
@@ -605,7 +605,7 @@ const InventoryPage = () => {
                 <select
                   value={stockCategoryFilter}
                   onChange={(e) => setStockCategoryFilter(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 text-sm text-black"
+                  className="h-10 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 text-sm text-black"
                 >
                   <option value="all">All categories</option>
                   {stockCategories.map((category) => (
@@ -651,13 +651,13 @@ const InventoryPage = () => {
                         </Badge>
 
                         <details className="relative">
-                          <summary className="list-none cursor-pointer rounded-lg border border-[#d6e8e0] bg-white px-3 py-2 text-sm font-medium text-black hover:bg-[#f3f7f5]">
+                          <summary className="list-none cursor-pointer rounded-xl border border-[#d6e8e0] bg-white px-3 py-2 text-sm font-medium text-black hover:bg-[#f3f7f5]">
                             Actions
                           </summary>
                           <div className="absolute right-0 z-10 mt-2 w-48 overflow-hidden rounded-xl border border-[#dceae4] bg-white p-1 shadow-lg">
                             <button
                               type="button"
-                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
                               onClick={(event) => {
                                 handleGenerateQr(item.sku)
                                 closeRowActionsMenu(event)
@@ -667,7 +667,7 @@ const InventoryPage = () => {
                             </button>
                             <button
                               type="button"
-                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
                               disabled={!canDownloadQr}
                               onClick={(event) => {
                                 handleDownloadQr(item.sku)
@@ -678,7 +678,7 @@ const InventoryPage = () => {
                             </button>
                             <button
                               type="button"
-                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
                               disabled={!canDownloadQr}
                               onClick={(event) => {
                                 handlePrintQr(item.sku)
@@ -690,7 +690,7 @@ const InventoryPage = () => {
                             <AdminOnlyAction title="Only admins can remove QR assignments.">
                               <button
                                 type="button"
-                                className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
                                 onClick={(event) => {
                                   handleRemoveQr(item.sku)
                                   closeRowActionsMenu(event)
@@ -717,7 +717,7 @@ const InventoryPage = () => {
                     </div>
 
                     {qrBySku[item.sku] && (
-                      <div className="mt-3 rounded-lg border border-[#e2ece8] bg-[#f7fcfa] p-3 max-w-[300px]">
+                      <div className="mt-3 rounded-xl border border-[#e2ece8] bg-[#f7fcfa] p-3 max-w-[300px]">
                         <img
                           src={qrBySku[item.sku]}
                           alt={`QR code for ${item.sku}`}
