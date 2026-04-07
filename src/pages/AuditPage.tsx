@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, AdminOnlyAction } from '@/components'
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, AdminOnlyAction, EmptyState } from '@/components'
 import { useAuthStore, useApprovalStore, useInventoryStore, useModeActions, useOfflineQueueStore } from '@/store'
 import { buildAuditDiscrepancyReport } from '@/lib/auditDiscrepancy'
 
@@ -246,9 +246,11 @@ const AuditPage = () => {
         </CardHeader>
         <CardContent>
           {auditSessions.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-600">No audits yet. Start a scan to create {nextAuditSessionId}.</p>
-            </div>
+            <EmptyState
+              icon="📋"
+              title="All caught up!"
+              message={`No audit sessions yet. Start a scan to create ${nextAuditSessionId}.`}
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -444,7 +446,12 @@ const AuditPage = () => {
         </CardHeader>
         <CardContent>
           {report.discrepancies.length === 0 ? (
-            <p className="text-sm text-gray-600">No discrepancy output for this audit session.</p>
+            <EmptyState
+              icon="✓"
+              title="All caught up!"
+              message="No discrepancy output for this audit session."
+              className="py-6"
+            />
           ) : (
             <div className="space-y-2">
               {report.discrepancies.map((row) => (

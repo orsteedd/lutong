@@ -28,10 +28,10 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#edf4f1] flex items-center justify-center px-4">
-      <Card className="w-full max-w-md border-[#cfe5db] bg-white">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FDECEC_0%,#f8f4f2_45%,#f5f5f4_100%)] flex items-center justify-center px-4">
+      <Card className="w-full max-w-md border-[#F3C4C4] bg-white">
         <CardHeader>
-          <CardTitle as="h1" className="text-2xl">Sign In</CardTitle>
+          <CardTitle as="h1" className="text-2xl text-[#111827]">Sign In</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>

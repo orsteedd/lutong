@@ -705,7 +705,7 @@ const InventoryPage = () => {
                         <AdminOnlyAction title="Only admins can delete inventory items.">
                           <Button
                             variant="outline"
-                            className="h-9 w-9 rounded-full border-red-200 text-red-700 hover:bg-red-50"
+                            className="h-9 w-9 rounded-xl border-red-200 text-red-700 hover:bg-red-50"
                             onClick={() => handleDeleteItem(item.itemId)}
                             aria-label={`Delete ${item.sku}`}
                             title={`Delete ${item.sku}`}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components'
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, EmptyState } from '@/components'
 import { useInventoryStore, useOfflineQueueStore } from '@/store'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
 
@@ -137,7 +137,20 @@ const ReportsPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {stockSplitTotal === 0 ? (
-              <p className="text-sm text-[#64748b]">No stock data available for split visualization.</p>
+              <div className="mx-auto flex h-56 w-56 items-center justify-center rounded-full bg-[#f8faf9] p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.2)]">
+                <svg viewBox="0 0 200 200" className="h-full w-full" aria-hidden="true">
+                  <circle cx="100" cy="100" r="74" fill="none" stroke="#d1d5db" strokeWidth="18" strokeDasharray="6 8" />
+                  <circle cx="100" cy="100" r="52" fill="#ffffff" stroke="#e5e7eb" strokeWidth="2" />
+                  <line x1="100" y1="26" x2="100" y2="174" stroke="#e5e7eb" strokeWidth="2" />
+                  <line x1="26" y1="100" x2="174" y2="100" stroke="#e5e7eb" strokeWidth="2" />
+                  <text x="100" y="96" textAnchor="middle" className="fill-[#94a3b8] text-[10px] font-semibold uppercase tracking-wide">
+                    No Data
+                  </text>
+                  <text x="100" y="112" textAnchor="middle" className="fill-[#9ca3af] text-[7px]">
+                    Awaiting stock records
+                  </text>
+                </svg>
+              </div>
             ) : (
               <>
                 <div className="mx-auto flex h-56 w-56 items-center justify-center rounded-full bg-white p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
@@ -177,7 +190,12 @@ const ReportsPage = () => {
           </CardHeader>
           <CardContent>
             {snapshot.items.length === 0 ? (
-              <p className="text-sm text-[#64748b]">No inventory items available for split reporting.</p>
+              <EmptyState
+                icon="📊"
+                title="All caught up!"
+                message="No inventory records available for split reporting."
+                className="py-8"
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">

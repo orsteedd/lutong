@@ -45,7 +45,7 @@ const QuantityInputModal = ({
           {/* Item Info */}
           <div>
             <div className="text-xs font-mono text-gray-600 mb-1">{sku}</div>
-            <h2 className="text-xl font-bold text-black">{itemName}</h2>
+            <h2 className="text-xl font-bold text-[#111827]">{itemName}</h2>
             {itemDetails && (
               <div className="text-xs text-gray-500 mt-2 space-y-1">
                 <div>📍 {itemDetails.location}</div>

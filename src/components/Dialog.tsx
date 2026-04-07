@@ -98,7 +98,7 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogHeader.displayName = 'DialogHeader'
 
 const DialogTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h2 className={cn('text-lg font-semibold text-black', className)} {...props} />
+  <h2 className={cn('text-lg font-semibold text-[#111827]', className)} {...props} />
 )
 DialogTitle.displayName = 'DialogTitle'
 

@@ -5,5 +5,6 @@ export { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 export { Input, type InputProps } from './Input'
 export { Toast, type ToastProps } from './Toast'
 export { Badge } from './Badge'
+export { default as EmptyState } from './EmptyState'
 export { default as RouteErrorBoundary } from './RouteErrorBoundary'
 export { default as AdminOnlyAction } from './AdminOnlyAction'

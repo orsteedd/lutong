@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, EmptyState } from '@/components'
 import { useActivityLogStore, useApprovalStore, useInventoryStore } from '@/store'
 import { applyApprovalRecordToInventory } from '@/lib/approvalApplication'
 
@@ -247,7 +247,12 @@ const ApprovalsPage = () => {
             )}
           </div>
           {resolvedRecords.length === 0 ? (
-            <p className="text-sm text-gray-600">No resolved records.</p>
+            <EmptyState
+              icon="🧾"
+              title="All caught up!"
+              message="No resolved approval records yet."
+              className="py-6"
+            />
           ) : (
             <div className="space-y-2">
               {resolvedRecords.map((record) => (

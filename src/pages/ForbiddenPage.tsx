@@ -6,7 +6,7 @@ const ForbiddenPage = () => {
     <div className="min-h-screen bg-[#edf4f1] flex items-center justify-center px-4">
       <Card className="w-full max-w-md border-amber-200 bg-white">
         <CardHeader>
-          <CardTitle as="h1" className="text-2xl text-amber-800">Access Denied</CardTitle>
+          <CardTitle as="h1" className="text-2xl text-[#111827]">Access Denied</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-[#475569]">

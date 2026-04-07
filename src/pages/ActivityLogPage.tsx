@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AdminOnlyAction, Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
+import { AdminOnlyAction, Button, Card, CardContent, CardHeader, CardTitle, EmptyState } from '@/components'
 import { useActivityLogStore, useAuthStore, useOfflineQueueStore, type ActivityActionType } from '@/store'
 
 const ACTION_OPTIONS: Array<{ value: 'all' | ActivityActionType; label: string }> = [
@@ -157,13 +157,11 @@ const ActivityLogPage = () => {
           )}
 
           {filteredLogs.length === 0 ? (
-            <div className="rounded-xl border border-[#dceae4] bg-[#f8fcfa] px-4 py-10 text-center">
-              <div className="mx-auto mb-2 inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#cfe3db] bg-white text-lg text-[#1e8572]">
-                🗂
-              </div>
-              <p className="text-sm font-semibold text-[#111827]">No matching log entries</p>
-              <p className="mt-1 text-xs text-[#64748b]">Try adjusting filters or date range to find activity.</p>
-            </div>
+            <EmptyState
+              icon="🗂"
+              title="All caught up!"
+              message="No matching activity entries. Try adjusting filters or date range."
+            />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-[#dceae4] bg-white">
               <table className="w-full min-w-[980px] border-separate border-spacing-0">
@@ -205,7 +203,7 @@ const ActivityLogPage = () => {
 
       <Card className="border-red-200 bg-red-50/40">
         <CardHeader>
-          <CardTitle as="h2" className="text-red-900">Danger Zone</CardTitle>
+          <CardTitle as="h2" className="text-[#111827]">Danger Zone</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-3">

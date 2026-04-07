@@ -38,7 +38,7 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
 
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-        <h2 className="text-lg font-semibold text-red-800">Page crashed</h2>
+        <h2 className="text-lg font-semibold text-[#111827]">Page crashed</h2>
         <p className="mt-2 text-sm text-red-700">
           {this.state.message || 'Something went wrong while rendering this page.'}
         </p>

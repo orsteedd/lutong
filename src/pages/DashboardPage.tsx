@@ -56,6 +56,7 @@ const DashboardPage = () => {
     () => lowStockAlerts.filter((item) => item.severity === 'low'),
     [lowStockAlerts]
   )
+  const showRedLineAlerts = criticalItems.length + warningItems.length > 0
 
   const todaysScans = useMemo(
     () => pendingScans.filter((scan) => isToday(scan.timestamp)).length,
@@ -126,51 +127,47 @@ const DashboardPage = () => {
       </Card>
 
       {/* Key Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${showRedLineAlerts ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+        {showRedLineAlerts && (
         <Card className="border-l-4 border-l-[#dc2626]">
           <CardHeader>
-            <CardTitle as="h2" className="text-[#b91c1c]">
+            <CardTitle as="h2" className="text-[#111827]">
               Red Line Alerts
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {criticalItems.length === 0 && warningItems.length === 0 ? (
-              <p className="text-sm text-gray-600">No low stock items.</p>
-            ) : (
-              <>
-                {criticalItems.slice(0, 4).map((item) => (
-                  <div
-                    key={item.itemId}
-                    className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-black">{item.name}</p>
-                      <p className="text-xs text-gray-600">
-                        {item.sku} • Stock {item.currentStock} / Buffer {item.safetyBuffer}
-                      </p>
-                    </div>
-                    <Badge variant="destructive">Critical</Badge>
-                  </div>
-                ))}
+            {criticalItems.slice(0, 4).map((item) => (
+              <div
+                key={item.itemId}
+                className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-black">{item.name}</p>
+                  <p className="text-xs text-gray-600">
+                    {item.sku} • Stock {item.currentStock} / Buffer {item.safetyBuffer}
+                  </p>
+                </div>
+                <Badge variant="destructive">Critical</Badge>
+              </div>
+            ))}
 
-                {warningItems.slice(0, 3).map((item) => (
-                  <div
-                    key={item.itemId}
-                    className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-black">{item.name}</p>
-                      <p className="text-xs text-gray-600">
-                        {item.sku} • Stock {item.currentStock} / Buffer {item.safetyBuffer}
-                      </p>
-                    </div>
-                    <Badge variant="warning">Low</Badge>
-                  </div>
-                ))}
-              </>
-            )}
+            {warningItems.slice(0, 3).map((item) => (
+              <div
+                key={item.itemId}
+                className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-black">{item.name}</p>
+                  <p className="text-xs text-gray-600">
+                    {item.sku} • Stock {item.currentStock} / Buffer {item.safetyBuffer}
+                  </p>
+                </div>
+                <Badge variant="warning">Low</Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
+        )}
 
         <Card className="bg-[#fbfefd]">
           <CardHeader>
@@ -193,6 +190,12 @@ const DashboardPage = () => {
               <span className="text-sm text-[#475569]">Pending Sync</span>
               <span className="text-lg font-bold text-[#1e8572]">{totalPending}</span>
             </div>
+            {!showRedLineAlerts && (
+              <div className="flex items-center justify-between rounded-xl border border-[#d6eadf] bg-[#f3fbf6] px-3 py-2">
+                <span className="text-sm text-[#475569]">All systems green</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#166534]">All clear</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

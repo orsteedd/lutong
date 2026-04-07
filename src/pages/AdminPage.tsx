@@ -19,6 +19,7 @@ const AdminPage = () => {
   const [resetMessage, setResetMessage] = useState<string | null>(null)
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [resetConfirmationText, setResetConfirmationText] = useState('')
+  const [clearCacheDialogOpen, setClearCacheDialogOpen] = useState(false)
   const [showRecentEvents, setShowRecentEvents] = useState(false)
   const scanQueue = useOfflineQueueStore((state) => state.scanQueue)
   const wastageLogs = useOfflineQueueStore((state) => state.wastageLogs)
@@ -52,11 +53,8 @@ const AdminPage = () => {
     }
   }, [conflictResolutionLogs.length])
 
-  const handleClearLocalCache = async () => {
+  const executeClearLocalCache = async () => {
     if (!isAdmin) return
-
-    const confirmed = window.confirm('Clear local queue/cache data only? This keeps inventory and approvals.')
-    if (!confirmed) return
 
     clearAllQueues()
     clearConflictLogs()
@@ -309,7 +307,7 @@ const AdminPage = () => {
             <p className="text-sm font-semibold text-red-900">Clear Local Cache</p>
             <p className="text-xs text-red-800">Removes queue/cache data only and preserves inventory and approvals.</p>
           </div>
-          <Button variant="secondary" className="h-11 md:w-auto" onClick={() => void handleClearLocalCache()} disabled={!isAdmin}>
+          <Button variant="secondary" className="h-11 md:w-auto" onClick={() => setClearCacheDialogOpen(true)} disabled={!isAdmin}>
             Clear Local Cache
           </Button>
         </div>
@@ -374,6 +372,34 @@ const AdminPage = () => {
               }}
             >
               Reset Application
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={clearCacheDialogOpen} onOpenChange={setClearCacheDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Confirm Clear Local Cache</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-3">
+            <p className="text-sm text-[#475569]">
+              This clears local queue and cache data only. Inventory records and approvals remain intact.
+            </p>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+              Cancel
+            </DialogClose>
+            <Button
+              variant="secondary"
+              className="h-10"
+              onClick={async () => {
+                await executeClearLocalCache()
+                setClearCacheDialogOpen(false)
+              }}
+            >
+              Clear Local Cache
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -5,23 +5,22 @@ use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\DeliveryController;
+use App\Http\Controllers\Api\V1\HealthCheckController;
 use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ScanController;
 use App\Http\Controllers\Api\V1\SyncController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/health-check', HealthCheckController::class)
+    ->name('api.health-check');
+
 Route::prefix('v1')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])
         ->name('api.v1.auth.login');
 
-    Route::get('/health', static function () {
-        return response()->json([
-            'status' => 'ok',
-            'service' => 'laravel-backend',
-            'timestamp' => now()->toIso8601String(),
-        ]);
-    })->name('api.v1.health');
+    Route::get('/health', HealthCheckController::class)
+        ->name('api.v1.health');
 
     Route::get('/logs', [ActivityLogController::class, 'index'])
         ->name('api.v1.logs.index');
