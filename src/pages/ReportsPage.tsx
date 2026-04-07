@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, EmptyState } from '@/components'
 import { useInventoryStore, useOfflineQueueStore } from '@/store'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
@@ -23,6 +23,51 @@ const ReportsPage = () => {
   ]
   const [selectedReportType, setSelectedReportType] = useState(reportTypes[0])
   const [reportGenerated, setReportGenerated] = useState(false)
+  const [stats, setStats] = useState({ scans: 0, transfers: 0, wastage: 0, audits: 0, accuracy: 100 })
+
+  useEffect(() => {
+    let cancelled = false
+    const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
+    if (apiBaseUrl.trim() === '') return
+
+    const base = apiBaseUrl.replace(/\/$/, '')
+
+    const hydrate = async () => {
+      try {
+        const [dashboardRes, accuracyRes] = await Promise.all([
+          fetch(`${base}/api/dashboard/stats`, { headers: { Accept: 'application/json' } }),
+          fetch(`${base}/api/v1/reports/audit-accuracy?days=30`, { headers: { Accept: 'application/json' } }),
+        ])
+
+        const dashboardPayload = (await dashboardRes.json()) as {
+          data?: { today_adjustments?: { scans?: number; transfers?: number; wastage?: number } }
+        }
+        const accuracyPayload = (await accuracyRes.json()) as {
+          data?: { totals?: { accuracy_percent?: number; audited_rows?: number } }
+        }
+
+        if (cancelled) return
+
+        setStats({
+          scans: Number(dashboardPayload.data?.today_adjustments?.scans ?? 0),
+          transfers: Number(dashboardPayload.data?.today_adjustments?.transfers ?? 0),
+          wastage: Number(dashboardPayload.data?.today_adjustments?.wastage ?? 0),
+          audits: Number(accuracyPayload.data?.totals?.audited_rows ?? 0),
+          accuracy: Number(accuracyPayload.data?.totals?.accuracy_percent ?? 100),
+        })
+      } catch {
+        if (!cancelled) {
+          setStats((prev) => prev)
+        }
+      }
+    }
+
+    void hydrate()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div className="space-y-6 pb-28">
@@ -41,13 +86,13 @@ const ReportsPage = () => {
                 <p className="mt-1 text-sm text-[#64748b]">Operational activity at a glance</p>
               </div>
               <div className="rounded-full border border-[#d6e8e0] bg-white px-3 py-1 text-xs font-semibold text-[#1e8572]">
-                3 Audits
+                {stats.audits} Audits
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Badge variant="default">245 Scans</Badge>
-              <Badge variant="outline">128 Items Received</Badge>
-              <Badge variant="secondary">3 Audits Performed</Badge>
+              <Badge variant="default">{stats.scans} Scans</Badge>
+              <Badge variant="outline">{stats.transfers} Transfers</Badge>
+              <Badge variant="secondary">{stats.wastage} Wastage</Badge>
             </div>
           </CardContent>
         </Card>
@@ -60,13 +105,13 @@ const ReportsPage = () => {
                 <p className="mt-1 text-sm text-[#64748b]">Audit health and data quality</p>
               </div>
               <div className="h-12 w-12 rounded-full border-2 border-[#bde1d3] bg-[#eef7f3] flex items-center justify-center text-xs font-bold text-[#1e8572]">
-                98%
+                {Math.round(stats.accuracy)}%
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Badge variant="success">Audit Accuracy 98%</Badge>
-              <Badge variant="success">Data Integrity 100%</Badge>
-              <Badge variant="warning">Discrepancies 2</Badge>
+              <Badge variant="success">Audit Accuracy {stats.accuracy.toFixed(1)}%</Badge>
+              <Badge variant="success">Data Integrity {stats.accuracy.toFixed(1)}%</Badge>
+              <Badge variant="warning">Discrepancies {Math.max(0, stats.audits - Math.round((stats.accuracy / 100) * stats.audits))}</Badge>
             </div>
           </CardContent>
         </Card>

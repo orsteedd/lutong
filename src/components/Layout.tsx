@@ -87,11 +87,8 @@ const Layout = ({ children }: LayoutProps) => {
   )
 
   const activeUnresolvedConflicts = useMemo(
-    () =>
-      safeUnresolvedConflicts.filter((conflict) =>
-        safePendingScans.some((scan) => scan.id === conflict.recordId)
-      ),
-    [safePendingScans, safeUnresolvedConflicts]
+    () => safeUnresolvedConflicts,
+    [safeUnresolvedConflicts]
   )
 
   const syncState: 'synced' | 'pending' | 'error' = useMemo(() => {
@@ -113,11 +110,6 @@ const Layout = ({ children }: LayoutProps) => {
     systemStatusTone === 'red'
       ? 'bg-[#B91C1C]'
       : 'bg-green-500'
-
-  const systemStatusButtonClass =
-    systemStatusTone === 'red'
-      ? 'border-[#F3C4C4] bg-[#FDECEC] text-[#B91C1C] hover:bg-[#F9DFDF]'
-      : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
 
   const systemStatusDescription =
     backendHealth === 'online'
@@ -214,10 +206,15 @@ const Layout = ({ children }: LayoutProps) => {
 
       try {
         const response = await fetch(endpoint, { method: 'GET', cache: 'no-store' })
+        const payload = (await response.json()) as {
+          database?: string
+          pdo_connected?: boolean
+        }
+
         if (!cancelled) {
-          if (response.status === 200) {
+          if (response.status === 200 && payload.database === 'connected' && payload.pdo_connected === true) {
             setBackendHealth('online')
-          } else if (response.status === 500) {
+          } else if (response.status === 500 || payload.database === 'disconnected' || payload.pdo_connected === false) {
             setBackendHealth('db-error')
           } else {
             setBackendHealth('offline')
@@ -306,13 +303,18 @@ const Layout = ({ children }: LayoutProps) => {
               <div className="flex items-center gap-2 md:gap-3">
                 <button
                   type="button"
-                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${systemStatusButtonClass} ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                    syncState === 'error'
+                      ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                      : syncState === 'pending'
+                        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                        : 'border-[#d6e8e0] bg-white text-[#334155] hover:bg-[#f3f6f5]'
+                  } ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
                   onClick={handleSyncClick}
                   disabled={isSyncing}
                   title={syncButtonTitle}
                 >
-                  <span className={`h-2.5 w-2.5 rounded-full ${systemStatusDotClass}`} aria-hidden="true" />
-                  <span>{isSyncing ? 'Syncing...' : systemStatusText}</span>
+                  <span>{isSyncing ? 'Syncing...' : syncState === 'error' ? 'Sync Error' : syncState === 'pending' ? 'Sync Pending' : 'Synced'}</span>
                 </button>
 
                 {syncError && (

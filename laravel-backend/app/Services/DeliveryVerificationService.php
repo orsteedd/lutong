@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Approval;
 use App\Models\Delivery;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -102,7 +103,7 @@ class DeliveryVerificationService
             ];
         }
 
-        DB::transaction(function () use ($delivery, $upsertRows): void {
+        DB::transaction(function () use ($delivery, $upsertRows, $reportRows, $mismatchCount): void {
             DB::table('delivery_items')->upsert(
                 $upsertRows,
                 ['delivery_id', 'item_id'],
@@ -111,6 +112,23 @@ class DeliveryVerificationService
 
             $delivery->status = 'pending';
             $delivery->save();
+
+            if ($mismatchCount > 0) {
+                Approval::query()->create([
+                    'module' => 'approvals',
+                    'reference_type' => 'delivery_discrepancy',
+                    'reference_id' => (int) $delivery->id,
+                    'status' => 'pending',
+                    'notes' => 'Auto-flagged delivery mismatch pending admin approval.',
+                    'metadata' => [
+                        'delivery_id' => (int) $delivery->id,
+                        'discrepancies' => array_values(array_filter(
+                            $reportRows,
+                            fn(array $row): bool => $row['flag'] !== 'match'
+                        )),
+                    ],
+                ]);
+            }
         });
 
         return [

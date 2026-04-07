@@ -307,7 +307,12 @@ const AdminPage = () => {
             <p className="text-sm font-semibold text-red-900">Clear Local Cache</p>
             <p className="text-xs text-red-800">Removes queue/cache data only and preserves inventory and approvals.</p>
           </div>
-          <Button variant="secondary" className="h-11 md:w-auto" onClick={() => setClearCacheDialogOpen(true)} disabled={!isAdmin}>
+          <Button
+            variant="destructive"
+            className="h-11 md:w-auto bg-red-700 hover:bg-red-800 focus-visible:ring-red-500"
+            onClick={() => setClearCacheDialogOpen(true)}
+            disabled={!isAdmin}
+          >
             Clear Local Cache
           </Button>
         </div>
@@ -363,7 +368,7 @@ const AdminPage = () => {
             </DialogClose>
             <Button
               variant="destructive"
-              className="h-10"
+              className="h-10 bg-red-700 hover:bg-red-800 focus-visible:ring-red-500"
               disabled={resetConfirmationText.trim() !== 'RESET'}
               onClick={async () => {
                 await executeResetApplication()
@@ -392,8 +397,8 @@ const AdminPage = () => {
               Cancel
             </DialogClose>
             <Button
-              variant="secondary"
-              className="h-10"
+              variant="destructive"
+              className="h-10 bg-red-700 hover:bg-red-800 focus-visible:ring-red-500"
               onClick={async () => {
                 await executeClearLocalCache()
                 setClearCacheDialogOpen(false)

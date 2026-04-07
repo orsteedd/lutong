@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Audit extends Model
@@ -14,6 +15,8 @@ class Audit extends Model
 
     protected $fillable = [
         'status',
+        'audit_session_id',
+        'zone_scope',
         'is_rejected',
         'rejected_at',
         'created_at',
@@ -23,6 +26,7 @@ class Audit extends Model
 
     protected $casts = [
         'is_rejected' => 'boolean',
+        'audit_session_id' => 'integer',
         'rejected_at' => 'datetime',
         'created_at' => 'datetime',
         'submitted_at' => 'datetime',
@@ -32,6 +36,11 @@ class Audit extends Model
     public function auditItems(): HasMany
     {
         return $this->hasMany(AuditItem::class);
+    }
+
+    public function auditSession(): BelongsTo
+    {
+        return $this->belongsTo(AuditSession::class, 'audit_session_id');
     }
 
     public function scopePending($query)

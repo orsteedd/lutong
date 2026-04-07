@@ -14,14 +14,20 @@ class Item extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
+        'sku',
         'name',
         'category_id',
+        'unit',
+        'zone',
+        'location_type',
+        'quantity',
         'qr_code',
         'safety_buffer',
         'created_at',
     ];
 
     protected $casts = [
+        'quantity' => 'decimal:3',
         'safety_buffer' => 'decimal:3',
         'created_at' => 'datetime',
     ];

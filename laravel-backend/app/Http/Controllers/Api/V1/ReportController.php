@@ -76,4 +76,42 @@ class ReportController extends Controller
             'data' => $data,
         ]);
     }
+
+    public function stockSplit(Request $request): JsonResponse
+    {
+        if ($request->boolean('async')) {
+            GenerateReportCacheJob::dispatch('stock-split');
+
+            return response()->json([
+                'message' => 'Stock split report generation queued.',
+            ], 202);
+        }
+
+        $data = $this->reportService->stockSplit();
+
+        return response()->json([
+            'message' => 'Stock split report generated successfully.',
+            'data' => $data,
+        ]);
+    }
+
+    public function auditAccuracy(Request $request): JsonResponse
+    {
+        $days = (int) $request->query('days', 30);
+
+        if ($request->boolean('async')) {
+            GenerateReportCacheJob::dispatch('audit-accuracy', ['days' => $days]);
+
+            return response()->json([
+                'message' => 'Audit accuracy report generation queued.',
+            ], 202);
+        }
+
+        $data = $this->reportService->auditAccuracy($days);
+
+        return response()->json([
+            'message' => 'Audit accuracy report generated successfully.',
+            'data' => $data,
+        ]);
+    }
 }

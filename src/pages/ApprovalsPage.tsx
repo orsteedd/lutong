@@ -176,13 +176,12 @@ const ApprovalsPage = () => {
         </CardHeader>
         <CardContent>
           {pendingRecords.length === 0 ? (
-            <div className="rounded-xl border border-[#d9eadf] bg-[#f6fcf8] px-4 py-10 text-center">
-              <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#bde1d3] bg-white text-xl text-[#1e8572]">
-                ✓
-              </div>
-              <p className="text-base font-semibold text-[#111827]">All caught up!</p>
-              <p className="mt-1 text-sm text-[#64748b]">No pending approvals</p>
-            </div>
+            <EmptyState
+              icon="✓"
+              title="All caught up!"
+              message="No pending approvals"
+              className="border-[#d9eadf] bg-[#f6fcf8] py-10"
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[840px] border-separate border-spacing-0">

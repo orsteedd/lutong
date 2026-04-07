@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AdminOnlyAction, Button, Card, CardContent, CardHeader, CardTitle, EmptyState } from '@/components'
-import { useActivityLogStore, useAuthStore, useOfflineQueueStore, type ActivityActionType } from '@/store'
+import { useActivityLogStore, useAuthStore, type ActivityActionType } from '@/store'
 
 const ACTION_OPTIONS: Array<{ value: 'all' | ActivityActionType; label: string }> = [
   { value: 'all', label: 'All Actions' },
@@ -18,48 +18,11 @@ const ActivityLogPage = () => {
   const logs = useActivityLogStore((state) => state.logs)
   const clearLogs = useActivityLogStore((state) => state.clearLogs)
   const isAdmin = user?.role === 'admin'
-  const pendingScans = useOfflineQueueStore((state) => state.pendingScans)
-  const wastageLogs = useOfflineQueueStore((state) => state.wastageLogs)
-  const transferLogs = useOfflineQueueStore((state) => state.transferLogs)
-  const isSyncing = useOfflineQueueStore((state) => state.isSyncing)
-  const syncStatus = useOfflineQueueStore((state) => state.syncStatus)
 
   const [actionFilter, setActionFilter] = useState<'all' | ActivityActionType>('all')
   const [itemFilter, setItemFilter] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
-
-  const safePendingScans = Array.isArray(pendingScans) ? pendingScans : []
-  const safeWastageLogs = Array.isArray(wastageLogs) ? wastageLogs : []
-  const safeTransferLogs = Array.isArray(transferLogs) ? transferLogs : []
-
-  const pendingSyncCount = useMemo(
-    () =>
-      safePendingScans.filter((item) => !item.synced).length +
-      safeWastageLogs.filter((item) => !item.synced).length +
-      safeTransferLogs.filter((item) => !item.synced).length,
-    [safePendingScans, safeTransferLogs, safeWastageLogs]
-  )
-
-  const syncState: 'synced' | 'pending' | 'error' = useMemo(() => {
-    if (syncStatus === 'error') return 'error'
-    if (isSyncing || pendingSyncCount > 0 || syncStatus === 'pending') return 'pending'
-    return 'synced'
-  }, [isSyncing, pendingSyncCount, syncStatus])
-
-  const statusDotClass =
-    syncState === 'error'
-      ? 'bg-red-500'
-      : syncState === 'pending'
-        ? 'bg-amber-500'
-        : 'bg-[#B91C1C]'
-
-  const statusButtonClass =
-    syncState === 'error'
-      ? 'border-red-200 bg-red-50 text-red-700'
-      : syncState === 'pending'
-        ? 'border-amber-200 bg-amber-50 text-amber-800'
-        : 'border-[#F3C4C4] bg-[#FDECEC] text-[#B91C1C]'
 
   const filteredLogs = useMemo(() => {
     const fromTs = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : null
@@ -82,57 +45,62 @@ const ActivityLogPage = () => {
           <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Activity</h1>
           <p className="text-[#64748b]">Trace scan, adjustment, and approval events for debugging and accountability.</p>
         </div>
-        <div
-          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold ${statusButtonClass}`}
-          title={syncState === 'synced' ? 'System ready' : `Sync pending for ${pendingSyncCount} record(s)`}
-        >
-          <span className={`h-2.5 w-2.5 rounded-full ${statusDotClass}`} aria-hidden="true" />
-          <span>System Status</span>
-        </div>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle as="h2">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-2">
-          <select
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value as 'all' | ActivityActionType)}
-            className="h-9 min-w-[170px] rounded-xl border border-[#d3e6dd] bg-white px-3 text-sm"
-          >
-            {ACTION_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+        <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_180px_180px_auto] items-end">
+          <label className="text-sm text-[#334155]">
+            Action
+            <select
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value as 'all' | ActivityActionType)}
+              className="mt-1 h-10 w-full rounded-xl border border-[#d3e6dd] bg-white px-3 text-sm"
+            >
+              {ACTION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-          <input
-            value={itemFilter}
-            onChange={(e) => setItemFilter(e.target.value)}
-            placeholder="Filter by item_id"
-            className="h-9 min-w-[190px] rounded-xl border border-[#d3e6dd] bg-white px-3 text-sm"
-          />
+          <label className="text-sm text-[#334155]">
+            Item/SKU
+            <input
+              value={itemFilter}
+              onChange={(e) => setItemFilter(e.target.value)}
+              placeholder="Filter by item_id"
+              className="mt-1 h-10 w-full rounded-xl border border-[#d3e6dd] bg-white px-3 text-sm"
+            />
+          </label>
 
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="h-9 rounded-xl border border-[#d3e6dd] bg-white px-3 text-sm"
-          />
+          <label className="text-sm text-[#334155]">
+            From
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="mt-1 h-10 w-full rounded-xl border border-[#d3e6dd] bg-white px-3 text-sm"
+            />
+          </label>
 
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="h-9 rounded-xl border border-[#d3e6dd] bg-white px-3 text-sm"
-          />
+          <label className="text-sm text-[#334155]">
+            To
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="mt-1 h-10 w-full rounded-xl border border-[#d3e6dd] bg-white px-3 text-sm"
+            />
+          </label>
 
           <Button
             variant="default"
             size="sm"
-            className="h-9"
+            className="h-10"
             onClick={() => {
               setActionFilter('all')
               setItemFilter('')

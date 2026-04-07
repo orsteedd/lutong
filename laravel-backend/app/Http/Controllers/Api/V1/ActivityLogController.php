@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -13,6 +14,7 @@ class ActivityLogController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->query(), [
+            'requester_user_id' => ['nullable', 'integer', 'min:1', 'exists:users,id'],
             'user_id' => ['nullable', 'integer', 'min:1', 'exists:users,id'],
             'action_type' => ['nullable', 'string', 'max:100'],
             'item_id' => ['nullable', 'integer', 'min:1', 'exists:items,id'],
@@ -26,6 +28,20 @@ class ActivityLogController extends Controller
                 'message' => 'Validation failed.',
                 'errors' => $validator->errors(),
             ], 422);
+        }
+
+        $requesterId = (int) ($request->user()?->id ?? $request->query('requester_user_id', 0));
+        if ($requesterId <= 0) {
+            return response()->json([
+                'message' => 'requester_user_id is required.',
+            ], 422);
+        }
+
+        $requester = User::query()->find($requesterId);
+        if (!$requester || $requester->role !== 'admin') {
+            return response()->json([
+                'message' => 'Only Admin users can access the admin module.',
+            ], 403);
         }
 
         $query = ActivityLog::query();

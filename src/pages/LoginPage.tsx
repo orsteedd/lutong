@@ -9,8 +9,8 @@ const LoginPage = () => {
   const isLoading = useAuthStore((state) => state.isLoading)
   const authError = useAuthStore((state) => state.error)
 
-  const [username, setUsername] = useState('admin')
-  const [password, setPassword] = useState('admin1234')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [message, setMessage] = useState<string | null>(null)
 
   if (user) {
@@ -67,7 +67,7 @@ const LoginPage = () => {
             </Button>
 
             <p className="text-xs text-[#64748b]">
-              Demo accounts: admin/admin1234 or staff/staff1234
+              Sign in with your Laravel backend user account.
             </p>
           </form>
         </CardContent>

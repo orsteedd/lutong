@@ -388,13 +388,13 @@ const DeliveryPage = () => {
 
             <div className="rounded-xl border border-[#dceae4] bg-[#f7fcfa] p-3 space-y-3">
               <p className="text-sm font-semibold text-[#111827]">Expected Items</p>
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_160px_auto] gap-3 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_auto] gap-3 items-end">
                 <label className="text-sm text-[#334155]">
                   Item
                   <select
                     value={draftSku}
                     onChange={(e) => setDraftSku(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
+                    className="mt-1 h-10 w-full rounded-xl border border-[#d6e8e0] bg-white px-3"
                     disabled={inventoryItems.length === 0 || !isAdmin}
                   >
                     <option value="">{inventoryItems.length === 0 ? 'No inventory items available' : 'Select SKU'}</option>
@@ -412,8 +412,8 @@ const DeliveryPage = () => {
                     min={1}
                     value={draftQty}
                     onChange={(e) => setDraftQty(e.target.value)}
-                    placeholder="0"
-                    className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
+                    placeholder={selectedInventoryItem ? String(selectedInventoryItem.quantity) : 'Select SKU first'}
+                    className="mt-1 h-10 w-full rounded-xl border border-[#d6e8e0] bg-white px-3"
                     disabled={inventoryItems.length === 0 || !isAdmin}
                   />
                 </label>
@@ -422,6 +422,11 @@ const DeliveryPage = () => {
                     Add Item
                   </Button>
                 </AdminOnlyAction>
+                {selectedInventoryItem && (
+                  <p className="md:col-span-3 text-xs text-[#64748b]">
+                    Current backend quantity for {selectedInventoryItem.sku} is {selectedInventoryItem.quantity} {selectedInventoryItem.unit || ''}.
+                  </p>
+                )}
               </div>
 
               {inventoryItems.length === 0 && (

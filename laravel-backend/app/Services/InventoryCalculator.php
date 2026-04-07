@@ -50,9 +50,14 @@ class InventoryCalculator
             return [
                 'item' => [
                     'id' => $item->id,
+                    'sku' => $item->sku,
                     'name' => $item->name,
+                    'unit' => $item->unit,
+                    'quantity' => (float) $item->quantity,
                     'qr_code' => $item->qr_code,
                     'category_id' => $item->category_id,
+                    'safety_buffer' => (float) $item->safety_buffer,
+                    'status' => $item->status,
                 ],
                 'stock' => $finalStock,
                 'breakdown' => [

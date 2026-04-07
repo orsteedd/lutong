@@ -4,6 +4,7 @@ export { useUIFeedbackStore } from './useUIFeedbackStore'
 export { useApprovalStore } from './useApprovalStore'
 export { useActivityLogStore } from './useActivityLogStore'
 export { useAuthStore } from './useAuthStore'
+export { useToastStore } from './useToastStore'
 export {
   useScanModeStore,
   useScanMode,

@@ -1,23 +1,23 @@
 import type { InventoryItem } from '@/store/useInventoryStore'
+import { notifyError } from './toastNotify'
 
-interface LowStockInventoryRow {
-  item_id: number
-  item_name: string
-  stock: number
-  safety_buffer: number
+interface InventoryApiRow {
+  id: number
+  sku: string
+  name: string
+  quantity: number
+  unit: string
+  category?: string
+  zone?: string | null
+  location_type?: string | null
+  safety_buffer?: number
   qr_code?: string
 }
 
 interface LowStockResponse {
   data?: {
-    aggregated_inventory?: LowStockInventoryRow[]
+    items?: InventoryApiRow[]
   }
-}
-
-const normalizeSku = (row: LowStockInventoryRow) => {
-  const qr = typeof row.qr_code === 'string' ? row.qr_code.trim() : ''
-  if (qr.length > 0) return qr.toUpperCase()
-  return `SKU-${String(row.item_id).padStart(3, '0')}`
 }
 
 export const fetchInventoryFromApi = async (): Promise<InventoryItem[]> => {
@@ -26,7 +26,7 @@ export const fetchInventoryFromApi = async (): Promise<InventoryItem[]> => {
     throw new Error('VITE_API_BASE_URL is not set. Laravel backend URL is required for inventory hydration.')
   }
 
-  const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/api/v1/reports/low-stock`
+  const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/api/v1/inventory`
   const response = await fetch(endpoint, {
     method: 'GET',
     headers: {
@@ -35,22 +35,25 @@ export const fetchInventoryFromApi = async (): Promise<InventoryItem[]> => {
   })
 
   if (!response.ok) {
+    notifyError('Backend error', `Inventory hydration failed with status ${response.status}`)
     throw new Error(`Inventory hydration failed with status ${response.status}`)
   }
 
   const payload = (await response.json()) as LowStockResponse
-  const rows = Array.isArray(payload.data?.aggregated_inventory)
-    ? payload.data?.aggregated_inventory
+  const rows = Array.isArray(payload.data?.items)
+    ? payload.data?.items
     : []
 
   return rows.map((row) => ({
-    id: `item-${row.item_id}`,
-    sku: normalizeSku(row),
-    name: row.item_name,
-    quantity: Math.max(0, Number(row.stock) || 0),
+    id: `item-${row.id}`,
+    sku: row.sku,
+    name: row.name,
+    quantity: Math.max(0, Number(row.quantity) || 0),
     safetyBuffer: Math.max(0, Number(row.safety_buffer) || 0),
-    unit: 'pcs',
-    category: 'Uncategorized',
+    unit: row.unit || 'pcs',
+    zone: row.zone ?? null,
+    locationType: row.location_type ?? null,
+    category: row.category || 'Uncategorized',
     lastUpdated: Date.now(),
   }))
 }
