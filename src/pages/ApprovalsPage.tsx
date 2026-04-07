@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
 import { useActivityLogStore, useApprovalStore, useInventoryStore } from '@/store'
 import { applyApprovalRecordToInventory } from '@/lib/approvalApplication'
 
@@ -18,6 +18,7 @@ const ApprovalsPage = () => {
   const [manualDelta, setManualDelta] = useState('')
   const [manualReason, setManualReason] = useState('')
   const [message, setMessage] = useState<string | null>(null)
+  const [manualRequestOpen, setManualRequestOpen] = useState(false)
 
   const pendingRecords = useMemo(
     () => records.filter((record) => record.status === 'pending'),
@@ -26,6 +27,18 @@ const ApprovalsPage = () => {
   const resolvedRecords = useMemo(
     () => records.filter((record) => record.status !== 'pending').slice(0, 15),
     [records]
+  )
+  const pendingQueueRows = useMemo(
+    () =>
+      pendingRecords.flatMap((record) =>
+        record.lineItems.map((line, index) => ({
+          rowId: `${record.id}-${line.sku}-${index}`,
+          recordId: record.id,
+          createdAt: record.createdAt,
+          line,
+        }))
+      ),
+    [pendingRecords]
   )
 
   const handleApprove = (recordId: string) => {
@@ -94,43 +107,60 @@ const ApprovalsPage = () => {
     setManualDelta('')
     setManualReason('')
     setMessage('Manual adjustment request submitted for approval.')
+    setManualRequestOpen(false)
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Approval Queue</h1>
-        <p className="text-[#64748b]">Review pending discrepancies and manual adjustments before applying inventory changes.</p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Approval Queue</h1>
+          <p className="text-[#64748b]">Review pending discrepancies and manual adjustments before applying inventory changes.</p>
+        </div>
+        <Button
+          type="button"
+          className="self-start h-11"
+          onClick={() => setManualRequestOpen(true)}
+        >
+          + Manual Request
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Manual Adjustment Request</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreateManualAdjustment} className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <input
-              value={manualSku}
-              onChange={(e) => setManualSku(e.target.value)}
-              placeholder="SKU"
-              className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2"
-            />
-            <input
-              value={manualDelta}
-              onChange={(e) => setManualDelta(e.target.value)}
-              placeholder="Delta (e.g. -3, 5)"
-              className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2"
-            />
-            <input
-              value={manualReason}
-              onChange={(e) => setManualReason(e.target.value)}
-              placeholder="Reason"
-              className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2"
-            />
-            <Button type="submit" className="h-11">Submit Pending Request</Button>
-          </form>
-        </CardContent>
-      </Card>
+      <Dialog open={manualRequestOpen} onOpenChange={setManualRequestOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Manual Adjustment Request</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <form id="manual-adjustment-request-form" onSubmit={handleCreateManualAdjustment} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                value={manualSku}
+                onChange={(e) => setManualSku(e.target.value)}
+                placeholder="SKU"
+                className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2"
+              />
+              <input
+                value={manualDelta}
+                onChange={(e) => setManualDelta(e.target.value)}
+                placeholder="Delta (e.g. -3, 5)"
+                className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2"
+              />
+              <input
+                value={manualReason}
+                onChange={(e) => setManualReason(e.target.value)}
+                placeholder="Reason"
+                className="rounded-lg border border-[#d3e6dd] bg-white px-3 py-2 md:col-span-3"
+              />
+            </form>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose className="h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+              Cancel
+            </DialogClose>
+            <Button type="submit" form="manual-adjustment-request-form" className="h-11">Submit Pending Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {message && (
         <Card>
@@ -146,54 +176,75 @@ const ApprovalsPage = () => {
         </CardHeader>
         <CardContent>
           {pendingRecords.length === 0 ? (
-            <p className="text-sm text-[#64748b]">No pending records.</p>
+            <div className="rounded-xl border border-[#d9eadf] bg-[#f6fcf8] px-4 py-10 text-center">
+              <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#bde1d3] bg-white text-xl text-[#1e8572]">
+                ✓
+              </div>
+              <p className="text-base font-semibold text-[#0f172a]">All caught up!</p>
+              <p className="mt-1 text-sm text-[#64748b]">No pending approvals</p>
+            </div>
           ) : (
-            <div className="space-y-3">
-              {pendingRecords.map((record) => (
-                <div key={record.id} className="rounded-xl border border-amber-200 bg-amber-50/70 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-black">{record.title}</p>
-                      <p className="text-xs text-gray-600">{record.summary}</p>
-                    </div>
-                    <Badge variant="warning">pending</Badge>
-                  </div>
-
-                  <div className="mt-2 space-y-1">
-                    {record.lineItems.map((line, idx) => (
-                      <p key={`${record.id}-${line.sku}-${idx}`} className="text-xs text-gray-700">
-                        {line.sku} • {line.name} • delta {line.delta > 0 ? '+' : ''}{line.delta} • {line.reason}
-                      </p>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-2">
-                    <Button className="h-10" onClick={() => handleApprove(record.id)}>Approve</Button>
-                    <Button
-                      variant="outline"
-                      className="h-10"
-                      onClick={() => handleReject(record.id)}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[840px] border-separate border-spacing-0">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-[#64748b]">
+                    <th className="border-b border-[#dceae4] px-3 py-3 font-medium">SKU</th>
+                    <th className="border-b border-[#dceae4] px-3 py-3 font-medium">Item Name</th>
+                    <th className="border-b border-[#dceae4] px-3 py-3 font-medium">Adjustment Delta</th>
+                    <th className="border-b border-[#dceae4] px-3 py-3 font-medium">Reason</th>
+                    <th className="border-b border-[#dceae4] px-3 py-3 font-medium">Date</th>
+                    <th className="border-b border-[#dceae4] px-3 py-3 text-right font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingQueueRows.map((row) => (
+                    <tr key={row.rowId} className="bg-white/80">
+                      <td className="border-b border-[#edf4f1] px-3 py-3 text-sm font-semibold text-[#0f172a]">{row.line.sku}</td>
+                      <td className="border-b border-[#edf4f1] px-3 py-3 text-sm text-[#334155]">{row.line.name}</td>
+                      <td className="border-b border-[#edf4f1] px-3 py-3 text-sm">
+                        <span className={`font-semibold ${row.line.delta > 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          {row.line.delta > 0 ? '+' : ''}{row.line.delta}
+                        </span>
+                      </td>
+                      <td className="border-b border-[#edf4f1] px-3 py-3 text-sm text-[#475569]">{row.line.reason}</td>
+                      <td className="border-b border-[#edf4f1] px-3 py-3 text-sm text-[#64748b]">{new Date(row.createdAt).toLocaleString()}</td>
+                      <td className="border-b border-[#edf4f1] px-3 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button className="h-9" onClick={() => handleApprove(row.recordId)}>Approve</Button>
+                          <Button
+                            variant="outline"
+                            className="h-9"
+                            onClick={() => handleReject(row.recordId)}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Resolved Records</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
+      <details className="group rounded-xl border border-[#dceae4] bg-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-[#0f172a]">Resolved Records</p>
+            <Badge variant="default">{resolvedRecords.length}</Badge>
+          </div>
+          <span className="text-xs text-[#64748b] transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div className="border-t border-[#edf4f1] px-4 py-4">
+          <div className="mb-3 flex items-center justify-between">
             <p className="text-sm text-gray-600">Latest approved/rejected records</p>
-            <Button variant="outline" className="h-10" onClick={clearResolved}>
-              Clear Resolved
-            </Button>
+            {resolvedRecords.length > 0 && (
+              <Button variant="outline" className="h-10" onClick={clearResolved}>
+                Clear Resolved
+              </Button>
+            )}
           </div>
           {resolvedRecords.length === 0 ? (
             <p className="text-sm text-gray-600">No resolved records.</p>
@@ -207,13 +258,13 @@ const ApprovalsPage = () => {
                       {record.status}
                     </Badge>
                   </div>
-                  <p className="text-xs text-gray-600 mt-1">{record.reviewNote || 'No note'}</p>
+                  <p className="mt-1 text-xs text-gray-600">{record.reviewNote || 'No note'}</p>
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </details>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { useOfflineQueueStore } from '@/store'
+import { useApprovalStore, useOfflineQueueStore } from '@/store'
 import { useAuthStore } from '@/store/useAuthStore'
 import { Button, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
 
@@ -37,6 +37,7 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const approvalRecords = useApprovalStore((state) => state.records)
   const isAdmin = user?.role === 'admin'
   const pendingScans = useOfflineQueueStore((state) => state.pendingScans)
   const wastageLogs = useOfflineQueueStore((state) => state.wastageLogs)
@@ -71,6 +72,10 @@ const Layout = ({ children }: LayoutProps) => {
     [visibleNavItems]
   )
   const pageTitle = getPageTitle(location.pathname)
+  const pendingApprovalsCount = useMemo(
+    () => approvalRecords.filter((record) => record.status === 'pending').length,
+    [approvalRecords]
+  )
 
   const pendingCount = useMemo(
     () =>
@@ -243,7 +248,14 @@ const Layout = ({ children }: LayoutProps) => {
                 }`}
               >
                 <span>{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span>{item.label}</span>
+                  {item.path === '/approvals' && pendingApprovalsCount > 0 && (
+                    <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full border border-[#b7dcca] bg-white px-1.5 py-0.5 text-[11px] font-bold leading-none text-[#186c5d]">
+                      {pendingApprovalsCount}
+                    </span>
+                  )}
+                </span>
               </Link>
             ))}
           </nav>
