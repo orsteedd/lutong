@@ -1,11 +1,12 @@
 import type { PendingScan } from '@/store/useOfflineQueueStore'
 import { getApiBaseUrl } from './apiBaseUrl'
-import { notifyError, notifyStaged, notifySuccess } from './toastNotify'
+import { notifyError } from './toastNotify'
 
 export interface SyncResponse {
   success: boolean
   syncedIds: string[]
   message?: string
+  statusCode?: number
 }
 
 const toItemId = (sku: string): number | null => {
@@ -75,12 +76,6 @@ export const sendPendingScansToApi = async (records: PendingScan[]): Promise<Syn
     throw new Error(data.message || 'Laravel API sync failed')
   }
 
-  if (response.status === 201) {
-    notifyStaged('Staged', data.message || 'Adjustment sent for approval.')
-  } else if (response.status === 200) {
-    notifySuccess('Scan sync successful', data.message || 'Scans synced to backend.')
-  }
-
   const succeededIds =
     data.data?.results
       ?.filter((result) => result.success)
@@ -91,5 +86,6 @@ export const sendPendingScansToApi = async (records: PendingScan[]): Promise<Syn
     success: true,
     syncedIds: succeededIds.length > 0 ? succeededIds : records.map((record) => record.id),
     message: data.message || `Synced ${data.data?.summary?.success ?? payloadRecords.length} records`,
+    statusCode: response.status,
   }
 }

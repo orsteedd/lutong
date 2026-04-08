@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#B91C1C",
-        secondary: "#7F1D1D",
+        primary: "#DA251D",
+        secondary: "#8B2F31",
         error: "#5A0F0B",
         success: "#16A34A",
         warning: "#F59E0B",
@@ -16,18 +16,18 @@ export default {
         'glass-dark': 'rgba(0, 0, 0, 0.05)',
       },
       textColor: {
-        primary: "#B91C1C",
-        secondary: "#7F1D1D",
+        primary: "#DA251D",
+        secondary: "#8B2F31",
         error: "#5A0F0B",
       },
       backgroundColor: {
-        primary: "#B91C1C",
-        secondary: "#7F1D1D",
+        primary: "#DA251D",
+        secondary: "#8B2F31",
         error: "#5A0F0B",
       },
       borderColor: {
-        primary: "#B91C1C",
-        secondary: "#7F1D1D",
+        primary: "#DA251D",
+        secondary: "#8B2F31",
       },
       backdropBlur: {
         xs: '2px',

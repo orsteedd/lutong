@@ -14,7 +14,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at 20% 0%, #e6f5ef 0%, #f3f8f6 40%, #f8fbfa 100%);
+  background: radial-gradient(circle at 20% 0%, #fdecec 0%, #f8f4f2 45%, #f5f5f4 100%);
   color: #111827;
   font-family: 'Inter', 'Geist', 'Manrope', 'Segoe UI', sans-serif;
 }

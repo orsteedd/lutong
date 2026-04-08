@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'malatang-cache-v1'
+const CACHE_VERSION = 'malatang-cache-v2-theme-red'
 const APP_SHELL = ['/', '/index.html', '/offline.html', '/manifest.webmanifest', '/favicon.svg']
 
 self.addEventListener('install', (event) => {
@@ -37,6 +37,26 @@ self.addEventListener('fetch', (event) => {
           if (cachedApp) return cachedApp
           const offlineFallback = await caches.match('/offline.html')
           return offlineFallback || Response.error()
+        })
+    )
+    return
+  }
+
+  const isStaticAsset = request.destination === 'script' || request.destination === 'style'
+  if (isStaticAsset) {
+    // Always try network first for JS/CSS so UI updates are not blocked by stale cache.
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (!response || response.status !== 200) return response
+
+          const responseClone = response.clone()
+          caches.open(CACHE_VERSION).then((cache) => cache.put(request, responseClone))
+          return response
+        })
+        .catch(async () => {
+          const cached = await caches.match(request)
+          return cached || Response.error()
         })
     )
     return

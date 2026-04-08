@@ -6,13 +6,13 @@
 
 /* CSS Variables for theme colors */
 :root {
-  --color-primary: #B91C1C;
-  --color-primary-hover: #7F1D1D;
-  --color-primary-active: #651313;
+  --color-primary: #DA251D;
+  --color-primary-hover: #C71F16;
+  --color-primary-active: #B01910;
   
-  --color-secondary: #7F1D1D;
-  --color-secondary-hover: #6E1717;
-  --color-secondary-active: #5A1313;
+  --color-secondary: #8B2F31;
+  --color-secondary-hover: #7B2829;
+  --color-secondary-active: #6B2121;
   
   --color-error: #5A0F0B;
   --color-error-light: #FEE2E2;

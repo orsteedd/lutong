@@ -238,7 +238,7 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen px-2 py-2 md:h-screen md:overflow-hidden md:px-5 md:py-5">
-      <div className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-[1500px] overflow-hidden rounded-[30px] border border-[#cfe5db] bg-[#edf4f1] shadow-[0_24px_64px_rgba(15,23,42,0.12)] md:min-h-0 md:h-[calc(100vh-2.5rem)]">
+      <div className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-[1500px] overflow-hidden rounded-[30px] border border-[#eadad4] bg-[#f7f3f1] shadow-[0_24px_64px_rgba(15,23,42,0.12)] md:min-h-0 md:h-[calc(100vh-2.5rem)]">
         <aside className="hidden md:flex w-[230px] flex-col border-r border-[#e8e5e2] bg-[#FDFCFB]">
           <div className="px-5 py-6 border-b border-[#ece8e4]">
             <div className="flex items-center gap-3">
@@ -285,11 +285,11 @@ const Layout = ({ children }: LayoutProps) => {
         </aside>
 
         <div className="flex flex-1 flex-col min-w-0">
-          <header className="border-b border-[#d6e8e0] bg-[#f9fcfb] px-4 py-3 md:px-6 md:py-4">
+          <header className="border-b border-[#e8d9d4] bg-[#fdf9f8] px-4 py-3 md:px-6 md:py-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <button
-                  className="md:hidden text-2xl p-2 rounded-xl hover:bg-[#e8f3ee]"
+                  className="md:hidden text-2xl p-2 rounded-xl hover:bg-[#f7ece8]"
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 >
                   ☰
@@ -308,7 +308,7 @@ const Layout = ({ children }: LayoutProps) => {
                       ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
                       : syncState === 'pending'
                         ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                        : 'border-[#d6e8e0] bg-white text-[#334155] hover:bg-[#f3f6f5]'
+                        : 'border-[#e5d9d4] bg-white text-[#334155] hover:bg-[#f8f3f1]'
                   } ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
                   onClick={handleSyncClick}
                   disabled={isSyncing}
@@ -341,13 +341,13 @@ const Layout = ({ children }: LayoutProps) => {
                   </div>
                 )}
 
-                <div className="hidden md:flex items-center gap-2 rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5">
+                <div className="hidden md:flex items-center gap-2 rounded-full border border-[#e5d9d4] bg-white px-2 py-0.5">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-[#64748b]">
                     {user?.username || 'unknown'}
                   </span>
                   <button
                     type="button"
-                    className="rounded-xl border border-[#d6e8e0] bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#334155] hover:bg-[#f3f6f5]"
+                    className="rounded-xl border border-[#e5d9d4] bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#334155] hover:bg-[#f8f3f1]"
                     onClick={logout}
                   >
                     Logout
@@ -357,14 +357,14 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
 
             {mobileMenuOpen && (
-              <div className="md:hidden mt-3 border border-[#dbe9e3] rounded-xl bg-white">
+              <div className="md:hidden mt-3 border border-[#eaded9] rounded-xl bg-white">
                 <nav className="flex flex-col">
                   {mobileNavItems.map((item) => (
                     <Link
                       key={item.path}
                       to={item.path}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`px-4 py-3 border-b border-[#eef3f1] font-medium transition-all ${
+                      className={`px-4 py-3 border-b border-[#f1e7e3] font-medium transition-all ${
                         isActive(item.path)
                           ? 'bg-[#FDECEC] text-[#B91C1C]'
                           : 'text-[#111827]'
@@ -379,7 +379,7 @@ const Layout = ({ children }: LayoutProps) => {
             )}
           </header>
 
-          <main className="flex-1 overflow-auto bg-[#eff5f2]">
+          <main className="flex-1 overflow-auto bg-[#f8f4f2]">
             <div className="mx-auto w-full max-w-[1200px] px-4 py-6 md:px-6 md:py-8">
               {children}
             </div>
@@ -387,7 +387,7 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </div>
 
-      <nav className="sticky bottom-0 mt-2 md:hidden bg-white/95 border border-[#d7e7df] rounded-xl flex gap-0 shadow-sm">
+      <nav className="sticky bottom-0 mt-2 md:hidden bg-white/95 border border-[#e7d9d4] rounded-xl flex gap-0 shadow-sm">
         {mobileNavItems.map((item) => (
           <Link
             key={item.path}

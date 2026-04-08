@@ -16,6 +16,7 @@ import {
   type UnresolvedConflict,
 } from '@/lib/conflictResolution'
 import { sendPendingScansToApi } from '@/lib/syncApi'
+import { notifyStaged, notifySuccess } from '@/lib/toastNotify'
 import { useActivityLogStore } from '@/store/useActivityLogStore'
 import { useInventoryStore } from '@/store/useInventoryStore'
 
@@ -556,6 +557,15 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
         try {
           const response = await sendPendingScansToApi(recordsToSync)
           const syncedIds = new Set(response.syncedIds)
+
+          if (syncedIds.size > 0) {
+            if (response.statusCode === 201) {
+              notifyStaged('Staged', response.message || 'Adjustment sent for approval.')
+            } else {
+              notifySuccess('Scan sync successful', response.message || 'Scans synced to backend.')
+            }
+          }
+
           const syncedTransferIds = new Set(
             recordsToSync
               .filter((record) => syncedIds.has(record.id) && record.type === 'transfer')
@@ -582,6 +592,14 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
             const nextQueue = current.scanQueue
               .filter((scan) => !removableIds.has(scan.id))
               .map((scan) => {
+                if (syncedTransferIds.has(scan.id)) {
+                  return {
+                    ...scan,
+                    synced: true,
+                    error: undefined,
+                  }
+                }
+
                 if (!unresolvedIds.has(scan.id)) return scan
                 const unresolved = unresolvedById.get(scan.id)
                 return {
