@@ -447,6 +447,13 @@ const InventoryPage = () => {
     notifyError('Deleted', `Item ${item.sku} removed from inventory.`)
   }
 
+  const handleOpenQuickAdjustment = (sku: string) => {
+    setOperationSku(sku)
+    setOperationQty('')
+    setOperationMessage(null)
+    setQuickAdjustmentModalOpen(true)
+  }
+
   if (isMobileView) {
     return <Navigate to="/" replace />
   }
@@ -462,9 +469,6 @@ const InventoryPage = () => {
           <div className="flex flex-wrap gap-2 md:justify-end">
             <Button variant="default" className="h-11" onClick={() => setAddItemModalOpen(true)} disabled={!isAdmin}>
               + Add New Item
-            </Button>
-            <Button variant="outline" className="h-11" onClick={() => setQuickAdjustmentModalOpen(true)} disabled={!isAdmin}>
-              ⇅ Quick Adjustment
             </Button>
           </div>
         </div>
@@ -778,6 +782,18 @@ const InventoryPage = () => {
                             Actions
                           </summary>
                           <div className="absolute right-0 z-10 mt-2 w-52 overflow-hidden rounded-xl border border-[#dceae4] bg-white p-1 shadow-lg">
+                            <AdminOnlyAction title="Only admins can apply inventory operations.">
+                              <button
+                                type="button"
+                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                                onClick={(event) => {
+                                  handleOpenQuickAdjustment(item.sku)
+                                  closeRowActionsMenu(event)
+                                }}
+                              >
+                                Quick Adjustment
+                              </button>
+                            </AdminOnlyAction>
                             <button
                               type="button"
                               className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
@@ -821,20 +837,20 @@ const InventoryPage = () => {
                                 Remove QR
                               </button>
                             </AdminOnlyAction>
+                            <AdminOnlyAction title="Only admins can delete inventory items.">
+                              <button
+                                type="button"
+                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"
+                                onClick={(event) => {
+                                  handleDeleteItem(item.itemId)
+                                  closeRowActionsMenu(event)
+                                }}
+                              >
+                                Delete Item
+                              </button>
+                            </AdminOnlyAction>
                           </div>
                         </details>
-
-                        <AdminOnlyAction title="Only admins can delete inventory items.">
-                          <Button
-                            variant="outline"
-                            className="h-9 w-9 rounded-xl border-red-200 text-red-700 hover:bg-red-50"
-                            onClick={() => handleDeleteItem(item.itemId)}
-                            aria-label={`Delete ${item.sku}`}
-                            title={`Delete ${item.sku}`}
-                          >
-                            <span aria-hidden="true">🗑</span>
-                          </Button>
-                        </AdminOnlyAction>
                       </div>
                     </div>
 
