@@ -9,8 +9,8 @@ const LoginPage = () => {
   const isLoading = useAuthStore((state) => state.isLoading)
   const authError = useAuthStore((state) => state.error)
 
-  const [username, setUsername] = useState('admin')
-  const [password, setPassword] = useState('admin1234')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [message, setMessage] = useState<string | null>(null)
 
   if (user) {
@@ -28,10 +28,10 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#edf4f1] flex items-center justify-center px-4">
-      <Card className="w-full max-w-md border-[#cfe5db] bg-white">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FDECEC_0%,#f8f4f2_45%,#f5f5f4_100%)] flex items-center justify-center px-4">
+      <Card className="w-full max-w-md border-[#F3C4C4] bg-white">
         <CardHeader>
-          <CardTitle as="h1" className="text-2xl">Sign In</CardTitle>
+          <CardTitle as="h1" className="text-2xl text-[#111827]">Sign In</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -67,7 +67,7 @@ const LoginPage = () => {
             </Button>
 
             <p className="text-xs text-[#64748b]">
-              Demo accounts: admin/admin1234 or staff/staff1234
+              Sign in with your Laravel backend user account.
             </p>
           </form>
         </CardContent>

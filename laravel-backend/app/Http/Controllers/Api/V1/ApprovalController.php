@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Approval;
+use App\Models\User;
 use App\Services\ApprovalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +14,42 @@ use RuntimeException;
 class ApprovalController extends Controller
 {
     public function __construct(private readonly ApprovalService $approvalService) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->query(), [
+            'requester_user_id' => ['required', 'integer', 'min:1', 'exists:users,id'],
+            'status' => ['nullable', 'in:pending,approved,rejected'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:500'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $requester = User::query()->find((int) $request->query('requester_user_id'));
+        if (!$requester || $requester->role !== 'admin') {
+            return response()->json([
+                'message' => 'Only Admin users can access the approvals module.',
+            ], 403);
+        }
+
+        $query = Approval::query()->with(['requester:id,name,role', 'approver:id,name,role']);
+        if ($request->filled('status')) {
+            $query->where('status', (string) $request->query('status'));
+        }
+
+        $limit = (int) $request->query('limit', 100);
+        $rows = $query->orderByDesc('created_at')->limit($limit)->get();
+
+        return response()->json([
+            'message' => 'Approvals retrieved successfully.',
+            'data' => $rows,
+        ]);
+    }
 
     public function handle(string $type, int $id, Request $request): JsonResponse
     {
@@ -32,6 +70,13 @@ class ApprovalController extends Controller
             return response()->json([
                 'message' => 'Approver user_id is required.',
             ], 422);
+        }
+
+        $actor = User::query()->find($actorId);
+        if (!$actor || $actor->role !== 'admin') {
+            return response()->json([
+                'message' => 'Only Admin users can access the approvals module.',
+            ], 403);
         }
 
         $action = strtolower((string) $request->input('action', 'approve'));

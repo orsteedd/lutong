@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Approval;
 use App\Models\ApprovalLog;
 use App\Models\Audit;
 use App\Models\Delivery;
+use App\Models\Item;
 use App\Models\InventoryLog;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -19,6 +21,7 @@ class ApprovalService
             'delivery' => $this->approveDelivery($id, $userId),
             'audit' => $this->approveAudit($id, $userId),
             'adjustment' => $this->approveAdjustment($id, $userId),
+            'request' => $this->approveRequest($id, $userId),
             default => throw new RuntimeException('Unsupported approval type.'),
         };
     }
@@ -29,8 +32,182 @@ class ApprovalService
             'delivery' => $this->rejectDelivery($id, $userId),
             'audit' => $this->rejectAudit($id, $userId),
             'adjustment' => $this->rejectAdjustment($id, $userId),
+            'request' => $this->rejectRequest($id, $userId),
             default => throw new RuntimeException('Unsupported approval type.'),
         };
+    }
+
+    private function approveRequest(int $id, int $userId): array
+    {
+        $approval = Approval::query()->find($id);
+        if (!$approval) {
+            throw new RuntimeException('Approval request not found.');
+        }
+
+        if ($approval->status !== 'pending') {
+            return [
+                'type' => 'request',
+                'id' => $approval->id,
+                'status' => $approval->status,
+                'message' => 'Approval request already resolved.',
+            ];
+        }
+
+        $result = DB::transaction(function () use ($approval, $userId): array {
+            if ($approval->reference_type === 'manual_adjustment') {
+                $item = Item::query()->lockForUpdate()->find((int) $approval->reference_id);
+                if (!$item) {
+                    throw new RuntimeException('Target item for manual adjustment was not found.');
+                }
+
+                $delta = (float) ($approval->metadata['delta'] ?? 0);
+                if ($delta === 0.0) {
+                    throw new RuntimeException('Manual adjustment delta is missing.');
+                }
+
+                $previous = (float) $item->quantity;
+                $next = round($previous + $delta, 3);
+                if ($next < 0) {
+                    throw new RuntimeException('Approving this request would make stock negative.');
+                }
+
+                $item->quantity = $next;
+                $item->save();
+
+                InventoryLog::query()->create([
+                    'item_id' => $item->id,
+                    'type' => 'adjustment',
+                    'quantity' => $delta,
+                    'source' => 'approval-request:' . $approval->id,
+                    'timestamp' => now(),
+                    'status' => 'approved',
+                ]);
+
+                $approval->status = 'approved';
+                $approval->approved_by = $userId;
+                $approval->updated_at = now();
+                $approval->save();
+
+                $this->activityLogger->log($userId, 'approval_request_applied', (int) $item->id, [
+                    'approval_id' => (int) $approval->id,
+                    'reference_type' => $approval->reference_type,
+                    'delta' => $delta,
+                    'previous_quantity' => $previous,
+                    'new_quantity' => $next,
+                ]);
+
+                return [
+                    'reference_type' => $approval->reference_type,
+                    'item_id' => (int) $item->id,
+                    'previous_quantity' => $previous,
+                    'new_quantity' => $next,
+                ];
+            }
+
+            if ($approval->reference_type === 'delivery_discrepancy') {
+                $deliveryId = (int) $approval->reference_id;
+                $rows = DB::table('delivery_items')
+                    ->where('delivery_id', $deliveryId)
+                    ->where('discrepancy_flag', '!=', 'match')
+                    ->get(['item_id', 'expected_qty', 'actual_qty', 'discrepancy_flag']);
+
+                foreach ($rows as $row) {
+                    $item = Item::query()->lockForUpdate()->find((int) $row->item_id);
+                    if (!$item) {
+                        continue;
+                    }
+
+                    $delta = round((float) $row->actual_qty - (float) $row->expected_qty, 3);
+                    if ($delta === 0.0) {
+                        continue;
+                    }
+
+                    $next = round((float) $item->quantity + $delta, 3);
+                    if ($next < 0) {
+                        throw new RuntimeException('Delivery discrepancy approval would make stock negative.');
+                    }
+
+                    $item->quantity = $next;
+                    $item->save();
+
+                    InventoryLog::query()->create([
+                        'item_id' => $item->id,
+                        'type' => 'adjustment',
+                        'quantity' => $delta,
+                        'source' => 'delivery-discrepancy:' . $deliveryId,
+                        'timestamp' => now(),
+                        'status' => 'approved',
+                    ]);
+                }
+
+                $approval->status = 'approved';
+                $approval->approved_by = $userId;
+                $approval->updated_at = now();
+                $approval->save();
+
+                $this->activityLogger->log($userId, 'delivery_discrepancy_approved', null, [
+                    'approval_id' => (int) $approval->id,
+                    'delivery_id' => $deliveryId,
+                    'line_count' => $rows->count(),
+                ]);
+
+                return [
+                    'reference_type' => $approval->reference_type,
+                    'delivery_id' => $deliveryId,
+                    'line_count' => $rows->count(),
+                ];
+            }
+
+            throw new RuntimeException('Unsupported request reference type.');
+        });
+
+        $this->writeApprovalLog('request', $approval->id, $userId, 'approved', [
+            'reference_type' => $approval->reference_type,
+        ]);
+
+        return [
+            'type' => 'request',
+            'id' => $approval->id,
+            'status' => 'approved',
+            'data' => $result,
+        ];
+    }
+
+    private function rejectRequest(int $id, int $userId): array
+    {
+        $approval = Approval::query()->find($id);
+        if (!$approval) {
+            throw new RuntimeException('Approval request not found.');
+        }
+
+        if ($approval->status !== 'pending') {
+            return [
+                'type' => 'request',
+                'id' => $approval->id,
+                'status' => $approval->status,
+                'message' => 'Approval request already resolved.',
+            ];
+        }
+
+        $approval->status = 'rejected';
+        $approval->approved_by = $userId;
+        $approval->updated_at = now();
+        $approval->save();
+
+        $this->writeApprovalLog('request', $approval->id, $userId, 'rejected', [
+            'reference_type' => $approval->reference_type,
+        ]);
+
+        $this->activityLogger->log($userId, 'approval_request_rejected', null, [
+            'approval_id' => (int) $approval->id,
+            'reference_type' => $approval->reference_type,
+        ]);
+
+        return [
+            'type' => 'request',
+            'id' => $approval->id,
+            'status' => 'rejected',
+        ];
     }
 
     private function approveDelivery(int $id, int $userId): array
@@ -175,6 +352,25 @@ class ApprovalService
                 'id' => $audit->id,
                 'inventory_logs_inserted' => count($logs),
             ]);
+
+            if ($audit->audit_session_id) {
+                $pendingInSession = DB::table('audits')
+                    ->where('audit_session_id', $audit->audit_session_id)
+                    ->where('status', 'pending')
+                    ->where('is_rejected', false)
+                    ->count();
+
+                if ($pendingInSession === 0) {
+                    DB::table('audit_sessions')
+                        ->where('id', $audit->audit_session_id)
+                        ->update([
+                            'status' => 'approved',
+                            'approved_by' => $userId,
+                            'ended_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                }
+            }
         });
 
         return [

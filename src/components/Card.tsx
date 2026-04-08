@@ -13,7 +13,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('bg-white/95 border border-[#d6e7df] rounded-2xl shadow-[0_10px_24px_rgba(15,23,42,0.06)] overflow-hidden', className)}
+      className={cn('bg-white/95 border border-[#d6e7df] rounded-xl shadow-sm overflow-hidden', className)}
       {...props}
     />
   )
@@ -35,7 +35,7 @@ const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className, as: Component = 'h2', ...props }, ref) => (
     <Component
       ref={ref}
-      className={cn('text-xl font-semibold text-[#0f172a]', className)}
+      className={cn('text-xl font-semibold text-[#111827]', className)}
       {...props}
     />
   )

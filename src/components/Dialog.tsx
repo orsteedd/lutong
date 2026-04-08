@@ -79,7 +79,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           <div
             ref={ref}
             className={cn(
-              'bg-white border border-gray-200 rounded-xl shadow-lg max-w-md w-full',
+              'bg-white border border-gray-200 rounded-xl shadow-lg max-w-md w-full max-h-[92vh] overflow-hidden flex flex-col',
               className
             )}
             onClick={(e) => e.stopPropagation()}
@@ -98,17 +98,17 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogHeader.displayName = 'DialogHeader'
 
 const DialogTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h2 className={cn('text-lg font-semibold text-black', className)} {...props} />
+  <h2 className={cn('text-lg font-semibold text-[#111827]', className)} {...props} />
 )
 DialogTitle.displayName = 'DialogTitle'
 
 const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('px-6 py-4', className)} {...props} />
+  <div className={cn('px-6 py-4 overflow-y-auto', className)} {...props} />
 )
 DialogBody.displayName = 'DialogBody'
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('px-6 py-4 border-t border-gray-200 flex gap-3 justify-end bg-gray-50', className)} {...props} />
+  <div className={cn('px-6 py-4 border-t border-gray-200 flex gap-3 justify-end bg-gray-50 shrink-0', className)} {...props} />
 )
 DialogFooter.displayName = 'DialogFooter'
 

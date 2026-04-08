@@ -38,14 +38,14 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
 
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-        <h2 className="text-lg font-semibold text-red-800">Page crashed</h2>
+        <h2 className="text-lg font-semibold text-[#111827]">Page crashed</h2>
         <p className="mt-2 text-sm text-red-700">
           {this.state.message || 'Something went wrong while rendering this page.'}
         </p>
         <button
           type="button"
           onClick={this.handleReload}
-          className="mt-4 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800"
+          className="mt-4 rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800"
         >
           Reload App
         </button>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { useOfflineQueueStore } from '@/store'
+import { useApprovalStore, useOfflineQueueStore } from '@/store'
 import { useAuthStore } from '@/store/useAuthStore'
 import { Button, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
 
@@ -30,13 +30,15 @@ const getPageTitle = (pathname: string) => {
 
 const Layout = ({ children }: LayoutProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [apiHealth, setApiHealth] = useState<'checking' | 'online' | 'offline'>('checking')
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine)
+  const [backendHealth, setBackendHealth] = useState<'checking' | 'online' | 'db-error' | 'offline'>('checking')
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false)
   const [retryTick, setRetryTick] = useState(() => Date.now())
   const hasAutoOpenedConflictRef = useRef(false)
   const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const approvalRecords = useApprovalStore((state) => state.records)
   const isAdmin = user?.role === 'admin'
   const pendingScans = useOfflineQueueStore((state) => state.pendingScans)
   const wastageLogs = useOfflineQueueStore((state) => state.wastageLogs)
@@ -71,6 +73,10 @@ const Layout = ({ children }: LayoutProps) => {
     [visibleNavItems]
   )
   const pageTitle = getPageTitle(location.pathname)
+  const pendingApprovalsCount = useMemo(
+    () => approvalRecords.filter((record) => record.status === 'pending').length,
+    [approvalRecords]
+  )
 
   const pendingCount = useMemo(
     () =>
@@ -81,11 +87,8 @@ const Layout = ({ children }: LayoutProps) => {
   )
 
   const activeUnresolvedConflicts = useMemo(
-    () =>
-      safeUnresolvedConflicts.filter((conflict) =>
-        safePendingScans.some((scan) => scan.id === conflict.recordId)
-      ),
-    [safePendingScans, safeUnresolvedConflicts]
+    () => safeUnresolvedConflicts,
+    [safeUnresolvedConflicts]
   )
 
   const syncState: 'synced' | 'pending' | 'error' = useMemo(() => {
@@ -94,37 +97,26 @@ const Layout = ({ children }: LayoutProps) => {
     return 'synced'
   }, [isSyncing, pendingCount, syncStatus])
 
-  const systemStatusTone =
-    syncState === 'error' || apiHealth === 'offline'
-      ? 'red'
-      : syncState === 'pending' || apiHealth === 'checking'
-        ? 'amber'
-        : 'green'
+  const systemStatusTone: 'red' | 'green' = backendHealth === 'online' ? 'green' : 'red'
+
+  const systemStatusText =
+    backendHealth === 'online'
+      ? 'System Status: Online'
+      : backendHealth === 'db-error'
+        ? 'System Status: DB Error'
+        : 'System Status: Offline'
 
   const systemStatusDotClass =
     systemStatusTone === 'red'
-      ? 'bg-red-500'
-      : systemStatusTone === 'amber'
-        ? 'bg-amber-500'
-        : 'bg-green-500'
-
-  const systemStatusButtonClass =
-    systemStatusTone === 'red'
-      ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
-      : systemStatusTone === 'amber'
-        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-        : 'border-[#bfe0d6] bg-white text-[#186c5d] hover:bg-[#f3faf7]'
+      ? 'bg-[#B91C1C]'
+      : 'bg-green-500'
 
   const systemStatusDescription =
-    syncState === 'error'
-      ? 'Sync error detected'
-      : syncState === 'pending'
-        ? `Sync pending for ${pendingCount} record(s)`
-        : apiHealth === 'offline'
-          ? 'API offline'
-          : apiHealth === 'checking'
-            ? 'Checking API connectivity'
-            : 'System ready'
+    backendHealth === 'online'
+      ? 'Database connected'
+      : backendHealth === 'db-error'
+        ? 'Database disconnected'
+        : 'Offline'
 
   const retryCountdownSeconds = useMemo(() => {
     if (!nextRetryAt) return null
@@ -187,23 +179,49 @@ const Layout = ({ children }: LayoutProps) => {
   }, [nextRetryAt])
 
   useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
     const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
-    const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/api/v1/health`
+    const endpoint = apiBaseUrl.trim()
+      ? `${apiBaseUrl.replace(/\/$/, '')}/api/health-check`
+      : '/api/health-check'
 
     const checkHealth = async () => {
-      if (!endpoint.startsWith('http')) {
-        if (!cancelled) setApiHealth('offline')
+      if (!isOnline) {
+        if (!cancelled) setBackendHealth('offline')
         return
       }
 
       try {
         const response = await fetch(endpoint, { method: 'GET', cache: 'no-store' })
+        const payload = (await response.json()) as {
+          database?: string
+          pdo_connected?: boolean
+        }
+
         if (!cancelled) {
-          setApiHealth(response.ok ? 'online' : 'offline')
+          if (response.status === 200 && payload.database === 'connected' && payload.pdo_connected === true) {
+            setBackendHealth('online')
+          } else if (response.status === 500 || payload.database === 'disconnected' || payload.pdo_connected === false) {
+            setBackendHealth('db-error')
+          } else {
+            setBackendHealth('offline')
+          }
         }
       } catch {
-        if (!cancelled) setApiHealth('offline')
+        if (!cancelled) setBackendHealth('offline')
       }
     }
 
@@ -216,19 +234,20 @@ const Layout = ({ children }: LayoutProps) => {
       cancelled = true
       clearInterval(timer)
     }
-  }, [])
+  }, [isOnline])
 
   return (
     <div className="min-h-screen px-2 py-2 md:h-screen md:overflow-hidden md:px-5 md:py-5">
       <div className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-[1500px] overflow-hidden rounded-[30px] border border-[#cfe5db] bg-[#edf4f1] shadow-[0_24px_64px_rgba(15,23,42,0.12)] md:min-h-0 md:h-[calc(100vh-2.5rem)]">
-        <aside className="hidden md:flex w-[230px] flex-col border-r border-[#d6e8e0] bg-[#f7fbf9]">
-          <div className="px-5 py-6 border-b border-[#e2eee9]">
+        <aside className="hidden md:flex w-[230px] flex-col border-r border-[#e8e5e2] bg-[#FDFCFB]">
+          <div className="px-5 py-6 border-b border-[#ece8e4]">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">📦</span>
-              <div>
-                <h1 className="text-2xl font-extrabold tracking-tight text-[#0f172a]">Malatang</h1>
-                <p className="text-sm text-[#64748b]">Inventory Console</p>
-              </div>
+              <img
+                src="/malatang.svg"
+                alt="NO. 1 MALATANG"
+                className="h-12 w-12 rounded-xl object-contain"
+              />
+              <span className="text-xs font-medium uppercase tracking-wide text-[#9ca3af]">Inventory</span>
             </div>
           </div>
           <nav className="px-3 py-4 flex-1 space-y-1">
@@ -238,20 +257,28 @@ const Layout = ({ children }: LayoutProps) => {
                 to={item.path}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
                   isActive(item.path)
-                    ? 'bg-[#d9f1e8] text-[#186c5d] border border-[#b7dcca]'
-                    : 'text-[#475569] hover:bg-[#eef7f3]'
+                    ? 'bg-[#FDECEC] text-[#B91C1C] border border-[#F3C4C4]'
+                    : 'text-[#111827] hover:bg-[#f7f2f1]'
                 }`}
               >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
+                <span className={`${isActive(item.path) ? 'text-[#B91C1C]' : 'text-[#111827]'} grayscale`}>{item.icon}</span>
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span>{item.label}</span>
+                  {item.path === '/approvals' && pendingApprovalsCount > 0 && (
+                    <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full border border-[#F3C4C4] bg-[#FDECEC] px-1.5 py-0.5 text-[11px] font-bold leading-none text-[#B91C1C]">
+                      {pendingApprovalsCount}
+                    </span>
+                  )}
+                </span>
               </Link>
             ))}
           </nav>
           <div className="px-4 pb-5">
-            <div className="rounded-xl border border-[#d6e8e0] bg-white px-3 py-3 text-xs text-[#64748b]">
-              <p className="font-semibold text-[#334155]">System Status</p>
+            <div className="rounded-xl border border-[#e4dfdc] bg-white px-3 py-3 text-xs text-[#111827]">
+              <p className="font-semibold text-[#111827]">System Status</p>
               <div className="mt-2 inline-flex items-center gap-2" title={systemStatusDescription}>
                 <span className={`h-2.5 w-2.5 rounded-full ${systemStatusDotClass}`} />
+                <span className="font-medium">{systemStatusText}</span>
               </div>
             </div>
           </div>
@@ -262,13 +289,13 @@ const Layout = ({ children }: LayoutProps) => {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <button
-                  className="md:hidden text-2xl p-2 rounded-lg hover:bg-[#e8f3ee]"
+                  className="md:hidden text-2xl p-2 rounded-xl hover:bg-[#e8f3ee]"
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 >
                   ☰
                 </button>
                 <div className="min-w-0">
-                  <h2 className="text-xl md:text-2xl font-bold tracking-tight text-[#0f172a] truncate">{pageTitle}</h2>
+                  <h2 className="text-xl md:text-2xl font-bold tracking-tight text-[#111827] truncate">{pageTitle}</h2>
                   <p className="text-xs text-[#64748b]">Operational workspace</p>
                 </div>
               </div>
@@ -276,19 +303,24 @@ const Layout = ({ children }: LayoutProps) => {
               <div className="flex items-center gap-2 md:gap-3">
                 <button
                   type="button"
-                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${systemStatusButtonClass} ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                    syncState === 'error'
+                      ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                      : syncState === 'pending'
+                        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                        : 'border-[#d6e8e0] bg-white text-[#334155] hover:bg-[#f3f6f5]'
+                  } ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
                   onClick={handleSyncClick}
                   disabled={isSyncing}
                   title={syncButtonTitle}
                 >
-                  <span className={`h-2.5 w-2.5 rounded-full ${systemStatusDotClass}`} aria-hidden="true" />
-                  <span>{isSyncing ? 'Syncing...' : 'System Status'}</span>
+                  <span>{isSyncing ? 'Syncing...' : syncState === 'error' ? 'Sync Error' : syncState === 'pending' ? 'Sync Pending' : 'Synced'}</span>
                 </button>
 
                 {syncError && (
                   <button
                     type="button"
-                    className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-700 hover:bg-red-100"
+                    className="rounded-xl border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-700 hover:bg-red-100"
                     title={
                       retryCountdownSeconds && retryCountdownSeconds > 0
                         ? `${syncError} (auto retry in ${retryCountdownSeconds}s)`
@@ -315,7 +347,7 @@ const Layout = ({ children }: LayoutProps) => {
                   </span>
                   <button
                     type="button"
-                    className="rounded-full border border-[#d6e8e0] bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#334155] hover:bg-[#f3f6f5]"
+                    className="rounded-xl border border-[#d6e8e0] bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#334155] hover:bg-[#f3f6f5]"
                     onClick={logout}
                   >
                     Logout
@@ -334,8 +366,8 @@ const Layout = ({ children }: LayoutProps) => {
                       onClick={() => setMobileMenuOpen(false)}
                       className={`px-4 py-3 border-b border-[#eef3f1] font-medium transition-all ${
                         isActive(item.path)
-                          ? 'bg-[#d9f1e8] text-[#186c5d]'
-                          : 'text-[#475569]'
+                          ? 'bg-[#FDECEC] text-[#B91C1C]'
+                          : 'text-[#111827]'
                       }`}
                     >
                       <span className="mr-2">{item.icon}</span>
@@ -362,8 +394,8 @@ const Layout = ({ children }: LayoutProps) => {
             to={item.path}
             className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-all ${
               isActive(item.path)
-                ? 'text-[#1e8572] bg-[#e6f4ef]'
-                : 'text-[#64748b] hover:text-[#0f172a]'
+                ? 'text-[#B91C1C] bg-[#FDECEC]'
+                : 'text-[#64748b] hover:text-[#111827]'
             }`}
           >
             <span className="text-xl">{item.icon}</span>
@@ -379,7 +411,7 @@ const Layout = ({ children }: LayoutProps) => {
           </DialogHeader>
           <DialogBody>
             {activeUnresolvedConflicts.length === 0 ? (
-              <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
                 No unresolved conflicts remain. You can retry sync now.
               </div>
             ) : (
@@ -387,7 +419,7 @@ const Layout = ({ children }: LayoutProps) => {
                 {activeUnresolvedConflicts.map((conflict) => (
                   <div
                     key={conflict.id}
-                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -410,19 +442,19 @@ const Layout = ({ children }: LayoutProps) => {
             )}
           </DialogBody>
           <DialogFooter>
-            <DialogClose className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+            <DialogClose className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
               Close
             </DialogClose>
             <button
               type="button"
-              className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100"
+              className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100"
               onClick={handleClearConflictList}
             >
               Dismiss List
             </button>
             <button
               type="button"
-              className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:opacity-90"
+              className="h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:opacity-90"
               onClick={() => {
                 void retrySync()
               }}

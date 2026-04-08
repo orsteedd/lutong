@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { notifyError, notifySuccess } from '@/lib/toastNotify'
 
 export type UserRole = 'admin' | 'staff'
 
@@ -24,23 +25,6 @@ interface AuthStore {
   logout: () => void
   clearError: () => void
 }
-
-const LOCAL_DEMO_USERS: Array<AuthUser & { password: string }> = [
-  {
-    id: 'local-admin-1',
-    username: 'admin',
-    name: 'Admin User',
-    role: 'admin',
-    password: 'admin1234',
-  },
-  {
-    id: 'local-staff-1',
-    username: 'staff',
-    name: 'Staff User',
-    role: 'staff',
-    password: 'staff1234',
-  },
-]
 
 export const useAuthStore = create<AuthStore>()(
   persist(
@@ -86,7 +70,9 @@ export const useAuthStore = create<AuthStore>()(
               }
             }
 
-            if (response.ok && payload.data?.user?.username && payload.data?.user?.role) {
+            const isApiSuccess = response.status === 200 || response.status === 201
+
+            if (isApiSuccess && payload.data?.user?.username && payload.data?.user?.role) {
               const user: AuthUser = {
                 id: String(payload.data.user.id ?? normalizedUsername),
                 username: payload.data.user.username,
@@ -101,31 +87,26 @@ export const useAuthStore = create<AuthStore>()(
                 error: null,
               })
 
+              notifySuccess('Signed in', 'Authentication completed successfully.')
+
               return { ok: true }
             }
 
             const error = payload.message || 'Invalid credentials.'
             set({ isLoading: false, error })
+            notifyError('Sign in failed', error)
             return { ok: false, error }
           } catch {
-            // Fall through to local demo auth if backend auth endpoint is unavailable.
+            const error = 'Authentication service is unavailable.'
+            set({ isLoading: false, error })
+            notifyError('Backend error', error)
+            return { ok: false, error }
           }
         }
 
-        const matched = LOCAL_DEMO_USERS.find(
-          (candidate) =>
-            candidate.username.toLowerCase() === normalizedUsername && candidate.password === password
-        )
-
-        if (!matched) {
-          const error = 'Invalid credentials.'
-          set({ isLoading: false, error })
-          return { ok: false, error }
-        }
-
-        const { password: _password, ...user } = matched
-        set({ user, token: null, isLoading: false, error: null })
-        return { ok: true }
+        const error = 'Set VITE_API_BASE_URL to the Laravel backend before signing in.'
+        set({ isLoading: false, error })
+        return { ok: false, error }
       },
 
       logout: () => {

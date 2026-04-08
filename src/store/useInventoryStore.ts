@@ -8,6 +8,8 @@ export interface InventoryItem {
   quantity: number
   safetyBuffer?: number
   unit: string
+  zone?: string | null
+  locationType?: string | null
   category: string
   lastUpdated: number
 }
@@ -32,7 +34,45 @@ interface InventoryStore {
   setError: (error: string | null) => void
 }
 
-const ensureItems = (value: unknown): InventoryItem[] => (Array.isArray(value) ? (value as InventoryItem[]) : [])
+const normalizeInventoryItem = (value: unknown): InventoryItem | null => {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Partial<InventoryItem>
+
+  const sku = typeof raw.sku === 'string' ? raw.sku.trim() : ''
+  if (!sku) return null
+
+  const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id : `item-${sku}`
+  const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name : sku
+  const category = typeof raw.category === 'string' && raw.category.trim() ? raw.category : 'Uncategorized'
+  const unit = typeof raw.unit === 'string' && raw.unit.trim() ? raw.unit : 'pcs'
+  const quantity = typeof raw.quantity === 'number' && Number.isFinite(raw.quantity) ? raw.quantity : 0
+  const safetyBuffer = typeof raw.safetyBuffer === 'number' && Number.isFinite(raw.safetyBuffer)
+    ? raw.safetyBuffer
+    : 0
+  const lastUpdated = typeof raw.lastUpdated === 'number' && Number.isFinite(raw.lastUpdated)
+    ? raw.lastUpdated
+    : Date.now()
+
+  return {
+    id,
+    sku,
+    name,
+    quantity,
+    safetyBuffer,
+    unit,
+    zone: raw.zone ?? null,
+    locationType: raw.locationType ?? null,
+    category,
+    lastUpdated,
+  }
+}
+
+const ensureItems = (value: unknown): InventoryItem[] => {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => normalizeInventoryItem(item))
+    .filter((item): item is InventoryItem => item !== null)
+}
 const ensureNumberOrNull = (value: unknown): number | null => (typeof value === 'number' ? value : null)
 const ensureStringOrNull = (value: unknown): string | null => (typeof value === 'string' ? value : null)
 
@@ -44,13 +84,17 @@ export const useInventoryStore = create<InventoryStore>()(
       isLoading: false,
       error: null,
       
-      addItem: (item) => set((state) => ({
-        items: [...state.items, item],
-      })),
+      addItem: (item) => set((state) => {
+        const normalized = normalizeInventoryItem(item)
+        if (!normalized) return state
+        return { items: [...state.items, normalized] }
+      }),
       
       updateItem: (id, updates) => set((state) => ({
         items: state.items.map((item) =>
-          item.id === id ? { ...item, ...updates, lastUpdated: Date.now() } : item
+          item.id === id
+            ? (normalizeInventoryItem({ ...item, ...updates, lastUpdated: Date.now() }) ?? item)
+            : item
         ),
       })),
       
@@ -60,7 +104,7 @@ export const useInventoryStore = create<InventoryStore>()(
       
       clearItems: () => set({ items: [] }),
       
-      setItems: (items) => set({ items }),
+      setItems: (items) => set({ items: ensureItems(items) }),
       markSynced: () => set({ lastSyncAt: Date.now(), error: null }),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),

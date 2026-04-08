@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { Navigate } from 'react-router-dom'
-import { AdminOnlyAction, Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
+import { AdminOnlyAction, Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, EmptyState } from '@/components'
 import { useAuthStore, useInventoryStore, useOfflineQueueStore } from '@/store'
 import { useActivityLogStore } from '@/store/useActivityLogStore'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
+import { notifyError, notifyStaged, notifySuccess } from '@/lib/toastNotify'
 import QRCode from 'qrcode'
 
 type InventoryOperationMode = 'delivery' | 'transfer' | 'wastage'
@@ -15,6 +16,25 @@ const closeRowActionsMenu = (event: MouseEvent<HTMLButtonElement>) => {
   if (details instanceof HTMLDetailsElement) {
     details.removeAttribute('open')
   }
+}
+
+const buildSkuBadgeSvg = (sku: string) => {
+  const safeSku = sku
+    .trim()
+    .toUpperCase()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="420" height="240" viewBox="0 0 420 240" role="img" aria-label="SKU ${safeSku}">
+      <rect width="420" height="240" rx="28" fill="#ffffff"/>
+      <rect x="20" y="20" width="380" height="200" rx="24" fill="#f8fbfa" stroke="#d6e8e0" stroke-width="2"/>
+      <text x="210" y="84" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#64748b">SKU</text>
+      <text x="210" y="148" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" fill="#111827">${safeSku}</text>
+      <text x="210" y="182" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#475569">Malatang Inventory</text>
+    </svg>
+  `.trim()
 }
 
 const InventoryPage = () => {
@@ -59,7 +79,7 @@ const InventoryPage = () => {
   )
 
   const stockCategories = useMemo(
-    () => Array.from(new Set(items.map((item) => item.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    () => Array.from(new Set(items.map((item) => (typeof item.category === 'string' ? item.category.trim() : '')).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [items]
   )
 
@@ -78,9 +98,15 @@ const InventoryPage = () => {
   }, [items, snapshot.items, stockCategoryFilter, stockSearch])
 
   const nextSku = useMemo(() => {
-    const used = new Set(items.map((item) => item.sku.toUpperCase()))
+    const used = new Set(
+      items
+        .map((item) => (typeof item.sku === 'string' ? item.sku : ''))
+        .filter((sku) => sku.trim().length > 0)
+        .map((sku) => sku.toUpperCase())
+    )
     const maxSeed = items.reduce((max, item) => {
-      const match = item.sku.toUpperCase().match(/^SKU-(\d+)$/)
+      const sku = typeof item.sku === 'string' ? item.sku : ''
+      const match = sku.toUpperCase().match(/^SKU-(\d+)$/)
       if (!match) return max
       const value = Number.parseInt(match[1], 10)
       return Number.isInteger(value) && value > max ? value : max
@@ -100,6 +126,27 @@ const InventoryPage = () => {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  useEffect(() => {
+    const handleOutsideClick = (event: Event) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+
+      document.querySelectorAll('details[data-qr-actions-menu][open]').forEach((menu) => {
+        if (menu instanceof HTMLDetailsElement && !menu.contains(target)) {
+          menu.removeAttribute('open')
+        }
+      })
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    document.addEventListener('touchstart', handleOutsideClick)
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('touchstart', handleOutsideClick)
+    }
+  }, [])
+
   const handleAddItem = () => {
     const sku = nextSku
     const name = draftName.trim()
@@ -110,16 +157,19 @@ const InventoryPage = () => {
 
     if (!name || !category || !unit) {
       setFormMessage('Item name, category, and unit are required.')
+      notifyError('Validation error', 'Item name, category, and unit are required.')
       return
     }
 
     if (!Number.isInteger(quantity) || quantity < 0) {
       setFormMessage('Quantity must be 0 or higher.')
+      notifyError('Validation error', 'Quantity must be 0 or higher.')
       return
     }
 
     if (!Number.isInteger(safetyBuffer) || safetyBuffer < 0) {
       setFormMessage('Safety buffer must be 0 or higher.')
+      notifyError('Validation error', 'Safety buffer must be 0 or higher.')
       return
     }
 
@@ -140,6 +190,7 @@ const InventoryPage = () => {
     setDraftQuantity('0')
     setDraftSafetyBuffer('0')
     setFormMessage(`Item added to inventory with SKU ${sku}.`)
+    notifySuccess('Item added', `Item added to inventory with SKU ${sku}.`)
   }
 
   const handleApplyOperation = () => {
@@ -147,16 +198,19 @@ const InventoryPage = () => {
 
     if (!selectedOperationItem) {
       setOperationMessage('Select an existing item first.')
+      notifyError('Validation error', 'Select an existing item first.')
       return
     }
 
     if (!Number.isInteger(qty) || qty <= 0) {
       setOperationMessage('Quantity must be greater than 0.')
+      notifyError('Validation error', 'Quantity must be greater than 0.')
       return
     }
 
     if (operationMode === 'wastage' && !wastageReason.trim()) {
       setOperationMessage('Wastage reason is required.')
+      notifyError('Validation error', 'Wastage reason is required.')
       return
     }
 
@@ -176,6 +230,7 @@ const InventoryPage = () => {
         metadata: { sessionId },
       })
       setOperationMessage(`Delivery applied: +${qty} to stock for ${selectedOperationItem.sku}.`)
+      notifyStaged('Staged', `Delivery queued for ${selectedOperationItem.sku} (+${qty}).`)
     }
 
     if (operationMode === 'transfer') {
@@ -193,6 +248,7 @@ const InventoryPage = () => {
         },
       })
       setOperationMessage(`Transfer applied: ${qty} moved Stock -> Display for ${selectedOperationItem.sku}.`)
+      notifyStaged('Staged', `Transfer queued for ${selectedOperationItem.sku} (${qty}).`)
     }
 
     if (operationMode === 'wastage') {
@@ -217,6 +273,7 @@ const InventoryPage = () => {
         synced: false,
       })
       setOperationMessage(`Wastage recorded: -${qty} from usable stock for ${selectedOperationItem.sku}.`)
+      notifyStaged('Staged', `Wastage queued for ${selectedOperationItem.sku} (-${qty}).`)
     }
 
     setOperationQty('')
@@ -240,20 +297,75 @@ const InventoryPage = () => {
     }
   }
 
-  const handleDownloadQr = (sku: string) => {
+  const handleDownloadQr = async (sku: string) => {
     const dataUrl = qrBySku[sku]
-    if (!dataUrl) {
-      setQrMessage(`Generate QR first for ${sku}.`)
+    if (dataUrl) {
+      const link = document.createElement('a')
+      link.href = dataUrl
+      link.download = `${sku}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setQrMessage(`QR downloaded for ${sku}.`)
       return
     }
 
-    const link = document.createElement('a')
-    link.href = dataUrl
-    link.download = `${sku}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    setQrMessage(`QR downloaded for ${sku}.`)
+    const svgMarkup = buildSkuBadgeSvg(sku)
+    const svgBlob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' })
+    const svgUrl = URL.createObjectURL(svgBlob)
+
+    try {
+      const image = new Image()
+      image.decoding = 'async'
+
+      const pngUrl = await new Promise<string>((resolve, reject) => {
+        image.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = 420
+          canvas.height = 240
+          const context = canvas.getContext('2d')
+
+          if (!context) {
+            reject(new Error('Canvas unavailable'))
+            return
+          }
+
+          context.fillStyle = '#ffffff'
+          context.fillRect(0, 0, canvas.width, canvas.height)
+          context.drawImage(image, 0, 0)
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error('PNG generation failed'))
+              return
+            }
+
+            resolve(URL.createObjectURL(blob))
+          }, 'image/png')
+        }
+
+        image.onerror = () => reject(new Error('SVG rendering failed'))
+        image.src = svgUrl
+      })
+
+      const link = document.createElement('a')
+      link.href = pngUrl
+      link.download = `${sku}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(pngUrl)
+      setQrMessage(`SKU image downloaded for ${sku}.`)
+    } catch {
+      const fallbackLink = document.createElement('a')
+      fallbackLink.href = svgUrl
+      fallbackLink.download = `${sku}.svg`
+      document.body.appendChild(fallbackLink)
+      fallbackLink.click()
+      document.body.removeChild(fallbackLink)
+      setQrMessage(`SVG downloaded for ${sku}.`)
+    } finally {
+      URL.revokeObjectURL(svgUrl)
+    }
   }
 
   const handlePrintQr = (sku: string) => {
@@ -332,6 +444,7 @@ const InventoryPage = () => {
 
     setOperationSku((prev) => (prev === item.sku ? '' : prev))
     setFormMessage(`Item ${item.sku} removed entirely from inventory and recorded in activity logs.`)
+    notifyError('Deleted', `Item ${item.sku} removed from inventory.`)
   }
 
   if (isMobileView) {
@@ -343,7 +456,7 @@ const InventoryPage = () => {
       <div>
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Inventory</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Inventory</h1>
           </div>
 
           <div className="flex flex-wrap gap-2 md:justify-end">
@@ -367,13 +480,13 @@ const InventoryPage = () => {
         <Card>
           <CardContent className="pt-6">
             <p className="text-xs uppercase tracking-wide text-gray-600">Stock</p>
-            <p className="text-3xl font-bold text-black">{snapshot.totals.stockQty}</p>
+            <p className="text-3xl font-bold text-black">{snapshot.totals.projectedStockQty}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <p className="text-xs uppercase tracking-wide text-sky-700">Display</p>
-            <p className="text-3xl font-bold text-sky-700">{snapshot.totals.displayQty}</p>
+            <p className="text-3xl font-bold text-sky-700">{snapshot.totals.projectedDisplayQty}</p>
           </CardContent>
         </Card>
         <Card>
@@ -394,7 +507,7 @@ const InventoryPage = () => {
           </DialogHeader>
           <DialogBody className="space-y-4">
             {!isAdmin && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Inventory write actions are restricted to admins.
               </div>
             )}
@@ -405,7 +518,7 @@ const InventoryPage = () => {
                   type="text"
                   value={nextSku}
                   readOnly
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
                 />
               </label>
               <label className="text-sm text-[#334155]">
@@ -415,7 +528,7 @@ const InventoryPage = () => {
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   placeholder="Item name"
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -426,7 +539,7 @@ const InventoryPage = () => {
                   value={draftCategory}
                   onChange={(e) => setDraftCategory(e.target.value)}
                   placeholder="Category"
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -440,7 +553,7 @@ const InventoryPage = () => {
                   value={draftUnit}
                   onChange={(e) => setDraftUnit(e.target.value)}
                   placeholder="pcs, kg, bottle"
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -451,7 +564,7 @@ const InventoryPage = () => {
                   min={0}
                   value={draftQuantity}
                   onChange={(e) => setDraftQuantity(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -462,7 +575,7 @@ const InventoryPage = () => {
                   min={0}
                   value={draftSafetyBuffer}
                   onChange={(e) => setDraftSafetyBuffer(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -471,7 +584,7 @@ const InventoryPage = () => {
             {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
           </DialogBody>
           <DialogFooter>
-            <DialogClose className="h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+            <DialogClose className="h-11 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
               Cancel
             </DialogClose>
             <AdminOnlyAction title="Only admins can add inventory items.">
@@ -482,7 +595,7 @@ const InventoryPage = () => {
       </Dialog>
 
       <Dialog open={quickAdjustmentModalOpen} onOpenChange={setQuickAdjustmentModalOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="w-[min(96vw,72rem)] max-w-none max-h-[90vh]">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Quick Adjustment</DialogTitle>
@@ -496,13 +609,13 @@ const InventoryPage = () => {
             </div>
           </DialogHeader>
           <DialogBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
               <label className="text-sm text-[#334155]">
                 Item (SKU)
                 <select
                   value={operationSku}
                   onChange={(e) => setOperationSku(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 >
                   <option value="">Select existing item</option>
@@ -519,7 +632,7 @@ const InventoryPage = () => {
                 <select
                   value={operationMode}
                   onChange={(e) => setOperationMode(e.target.value as InventoryOperationMode)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 >
                   <option value="delivery">Delivery (+Stock)</option>
@@ -535,14 +648,16 @@ const InventoryPage = () => {
                   min={1}
                   value={operationQty}
                   onChange={(e) => setOperationQty(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
 
-              <div className="flex items-end">
+              <div className="flex items-end md:col-span-4 md:justify-end">
                 <AdminOnlyAction title="Only admins can apply inventory operations.">
-                  <Button className="h-11 w-full" onClick={handleApplyOperation}>Apply Operation</Button>
+                  <Button className="h-11 w-full whitespace-nowrap md:w-auto md:min-w-[220px]" onClick={handleApplyOperation}>
+                    Apply Operation
+                  </Button>
                 </AdminOnlyAction>
               </div>
             </div>
@@ -554,7 +669,7 @@ const InventoryPage = () => {
                   type="text"
                   value={wastageReason}
                   onChange={(e) => setWastageReason(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 py-2"
+                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
                   disabled={!isAdmin}
                 />
               </label>
@@ -562,14 +677,14 @@ const InventoryPage = () => {
 
             {selectedOperationItem && (
               <p className="text-xs text-[#64748b]">
-                Current split for {selectedOperationItem.sku}: Stock {snapshot.items.find((x) => x.sku === selectedOperationItem.sku)?.stockQty ?? 0} • Display {snapshot.items.find((x) => x.sku === selectedOperationItem.sku)?.displayQty ?? 0}
+                Current split for {selectedOperationItem.sku}: Stock {snapshot.items.find((x) => x.sku === selectedOperationItem.sku)?.projectedStockQty ?? 0} • Display {snapshot.items.find((x) => x.sku === selectedOperationItem.sku)?.projectedDisplayQty ?? 0}
               </p>
             )}
 
             {operationMessage && <p className="text-xs text-[#64748b]">{operationMessage}</p>}
           </DialogBody>
           <DialogFooter>
-            <DialogClose className="h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
+            <DialogClose className="h-11 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
               Close
             </DialogClose>
           </DialogFooter>
@@ -597,7 +712,7 @@ const InventoryPage = () => {
                   value={stockSearch}
                   onChange={(e) => setStockSearch(e.target.value)}
                   placeholder="Search name or SKU"
-                  className="h-10 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 text-sm text-black placeholder:text-[#94a3b8]"
+                  className="h-10 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 text-sm text-black placeholder:text-[#94a3b8]"
                 />
               </label>
               <label className="sm:w-48">
@@ -605,7 +720,7 @@ const InventoryPage = () => {
                 <select
                   value={stockCategoryFilter}
                   onChange={(e) => setStockCategoryFilter(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-[#d6e8e0] bg-white px-3 text-sm text-black"
+                  className="h-10 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 text-sm text-black"
                 >
                   <option value="all">All categories</option>
                   {stockCategories.map((category) => (
@@ -620,9 +735,17 @@ const InventoryPage = () => {
         </CardHeader>
         <CardContent>
           {snapshot.items.length === 0 ? (
-            <p className="text-sm text-gray-600">No inventory items available yet.</p>
+            <EmptyState
+              icon="📦"
+              title="No data"
+              message="No inventory items available yet."
+            />
           ) : filteredStockItems.length === 0 ? (
-            <p className="text-sm text-gray-600">No items match your search or category filter.</p>
+            <EmptyState
+              icon="🔎"
+              title="No data"
+              message="No items match your search or category filter."
+            />
           ) : (
             <div className="space-y-2">
               {filteredStockItems.map((item) => {
@@ -631,7 +754,7 @@ const InventoryPage = () => {
                 const unit = baseItem?.unit ?? 'pcs'
                 const category = baseItem?.category ?? 'Uncategorized'
                 const isLow = item.confirmedAvailable <= safetyBuffer
-                const canDownloadQr = Boolean(qrBySku[item.sku])
+                const canPrintQr = Boolean(qrBySku[item.sku])
                 return (
                   <div
                     key={item.itemId}
@@ -647,17 +770,17 @@ const InventoryPage = () => {
 
                       <div className="flex items-center gap-3">
                         <Badge variant={isLow ? 'warning' : 'success'}>
-                          {item.confirmedAvailable} {unit}
+                          {item.projectedAvailable} {unit}
                         </Badge>
 
-                        <details className="relative">
-                          <summary className="list-none cursor-pointer rounded-lg border border-[#d6e8e0] bg-white px-3 py-2 text-sm font-medium text-black hover:bg-[#f3f7f5]">
+                        <details className="relative" data-qr-actions-menu>
+                          <summary className="list-none cursor-pointer rounded-xl border border-[#d6e8e0] bg-white px-3 py-2 text-sm font-medium text-black hover:bg-[#f3f7f5]">
                             Actions
                           </summary>
-                          <div className="absolute right-0 z-10 mt-2 w-48 overflow-hidden rounded-xl border border-[#dceae4] bg-white p-1 shadow-lg">
+                          <div className="absolute right-0 z-10 mt-2 w-52 overflow-hidden rounded-xl border border-[#dceae4] bg-white p-1 shadow-lg">
                             <button
                               type="button"
-                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
                               onClick={(event) => {
                                 handleGenerateQr(item.sku)
                                 closeRowActionsMenu(event)
@@ -667,19 +790,18 @@ const InventoryPage = () => {
                             </button>
                             <button
                               type="button"
-                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
-                              disabled={!canDownloadQr}
+                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5]"
                               onClick={(event) => {
                                 handleDownloadQr(item.sku)
                                 closeRowActionsMenu(event)
                               }}
                             >
-                              Download QR
+                              Download SKU
                             </button>
                             <button
                               type="button"
-                              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
-                              disabled={!canDownloadQr}
+                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                              disabled={!canPrintQr}
                               onClick={(event) => {
                                 handlePrintQr(item.sku)
                                 closeRowActionsMenu(event)
@@ -690,7 +812,7 @@ const InventoryPage = () => {
                             <AdminOnlyAction title="Only admins can remove QR assignments.">
                               <button
                                 type="button"
-                                className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
                                 onClick={(event) => {
                                   handleRemoveQr(item.sku)
                                   closeRowActionsMenu(event)
@@ -705,7 +827,7 @@ const InventoryPage = () => {
                         <AdminOnlyAction title="Only admins can delete inventory items.">
                           <Button
                             variant="outline"
-                            className="h-9 w-9 rounded-full border-red-200 text-red-700 hover:bg-red-50"
+                            className="h-9 w-9 rounded-xl border-red-200 text-red-700 hover:bg-red-50"
                             onClick={() => handleDeleteItem(item.itemId)}
                             aria-label={`Delete ${item.sku}`}
                             title={`Delete ${item.sku}`}
@@ -717,7 +839,7 @@ const InventoryPage = () => {
                     </div>
 
                     {qrBySku[item.sku] && (
-                      <div className="mt-3 rounded-lg border border-[#e2ece8] bg-[#f7fcfa] p-3 max-w-[300px]">
+                      <div className="mt-3 rounded-xl border border-[#e2ece8] bg-[#f7fcfa] p-3 max-w-[300px]">
                         <img
                           src={qrBySku[item.sku]}
                           alt={`QR code for ${item.sku}`}

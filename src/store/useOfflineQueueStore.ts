@@ -556,18 +556,28 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()(
         try {
           const response = await sendPendingScansToApi(recordsToSync)
           const syncedIds = new Set(response.syncedIds)
+          const syncedTransferIds = new Set(
+            recordsToSync
+              .filter((record) => syncedIds.has(record.id) && record.type === 'transfer')
+              .map((record) => record.id)
+          )
 
           for (const id of syncedIds) {
             void setPendingSyncStatus(id, 'synced').catch((error) =>
               logDbError('setPendingSyncStatus(sync success) failed', error)
             )
-            void deleteScan(id).catch((error) => logDbError('deleteScan(sync success) failed', error))
+            if (!syncedTransferIds.has(id)) {
+              void deleteScan(id).catch((error) => logDbError('deleteScan(sync success) failed', error))
+            }
           }
 
           set((current) => {
             const droppedIds = new Set(droppedByResolution.map((record) => record.id))
             const unresolvedIds = new Set(conflictResult.unresolvedConflicts.map((conflict) => conflict.recordId))
-            const removableIds = new Set<string>([...syncedIds, ...droppedIds])
+            const removableIds = new Set<string>([
+              ...Array.from(syncedIds).filter((id) => !syncedTransferIds.has(id)),
+              ...droppedIds,
+            ])
 
             const nextQueue = current.scanQueue
               .filter((scan) => !removableIds.has(scan.id))

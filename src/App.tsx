@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from '@/components/Layout'
+import ToastViewport from '@/components/ToastViewport'
 import { RouteErrorBoundary } from '@/components'
 import DashboardPage from '@/pages/DashboardPage'
 import InventoryPage from '@/pages/InventoryPage'
@@ -102,6 +103,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ToastViewport />
       <Routes>
         <Route
           path="/login"

@@ -1,5 +1,6 @@
 import type { PendingScan } from '@/store/useOfflineQueueStore'
 import { getApiBaseUrl } from './apiBaseUrl'
+import { notifyError, notifyStaged, notifySuccess } from './toastNotify'
 
 export interface SyncResponse {
   success: boolean
@@ -70,7 +71,14 @@ export const sendPendingScansToApi = async (records: PendingScan[]): Promise<Syn
   }
 
   if (!response.ok) {
+    notifyError('Backend error', data.message || 'Laravel API sync failed')
     throw new Error(data.message || 'Laravel API sync failed')
+  }
+
+  if (response.status === 201) {
+    notifyStaged('Staged', data.message || 'Adjustment sent for approval.')
+  } else if (response.status === 200) {
+    notifySuccess('Scan sync successful', data.message || 'Scans synced to backend.')
   }
 
   const succeededIds =

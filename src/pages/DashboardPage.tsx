@@ -4,8 +4,24 @@ import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/compo
 import { useInventoryStore } from '@/store/useInventoryStore'
 import { useOfflineQueueStore } from '@/store/useOfflineQueueStore'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
-import { buildLowStockAlerts } from '@/lib/lowStockAlerts'
 import { buildStockForecast } from '@/lib/stockForecast'
+
+interface DashboardStatsResponse {
+  data?: {
+    inventory_health?: {
+      critical?: number
+      normal?: number
+      total?: number
+    }
+    today_adjustments?: {
+      scans?: number
+      wastage?: number
+      transfers?: number
+      total?: number
+      date?: string
+    }
+  }
+}
 
 const isToday = (timestamp: number) => {
   const now = new Date()
@@ -26,14 +42,28 @@ const DashboardPage = () => {
   const wastageLogs = useOfflineQueueStore((state) => state.wastageLogs)
   const transferLogs = useOfflineQueueStore((state) => state.transferLogs)
   const scanQueue = useOfflineQueueStore((state) => state.scanQueue)
+  const [dashboardStats, setDashboardStats] = useState<DashboardStatsResponse['data'] | null>(null)
+  const [dashboardStatsError, setDashboardStatsError] = useState<string | null>(null)
 
   const inventoryStateSnapshot = useMemo(
     () => computeInventoryStateSnapshot(items, scanQueue),
     [items, scanQueue]
   )
-  const lowStockAlerts = useMemo(
-    () => buildLowStockAlerts(inventoryStateSnapshot.items, items),
-    [inventoryStateSnapshot.items, items]
+  const redLineItems = useMemo(
+    () =>
+      items
+        .filter((item) => item.quantity <= (item.safetyBuffer ?? 0))
+        .sort((left, right) => {
+          const leftGap = left.quantity - (left.safetyBuffer ?? 0)
+          const rightGap = right.quantity - (right.safetyBuffer ?? 0)
+
+          if (leftGap !== rightGap) {
+            return leftGap - rightGap
+          }
+
+          return left.sku.localeCompare(right.sku)
+        }),
+    [items]
   )
   const stockForecast = useMemo(
     () =>
@@ -49,13 +79,64 @@ const DashboardPage = () => {
     [stockForecast]
   )
   const criticalItems = useMemo(
-    () => lowStockAlerts.filter((item) => item.severity === 'critical'),
-    [lowStockAlerts]
+    () => redLineItems.filter((item) => item.quantity <= 0),
+    [redLineItems]
   )
   const warningItems = useMemo(
-    () => lowStockAlerts.filter((item) => item.severity === 'low'),
-    [lowStockAlerts]
+    () => redLineItems.filter((item) => item.quantity > 0),
+    [redLineItems]
   )
+  const showRedLineAlerts = criticalItems.length + warningItems.length > 0
+
+  useEffect(() => {
+    let cancelled = false
+    const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
+
+    const fetchDashboardStats = async () => {
+      if (!apiBaseUrl.trim()) {
+        if (!cancelled) setDashboardStatsError('VITE_API_BASE_URL is not set.')
+        return
+      }
+
+      try {
+        const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/dashboard/stats`, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+          },
+        })
+
+        const payload = (await response.json()) as DashboardStatsResponse
+        if (!cancelled && response.ok) {
+          setDashboardStats(payload.data ?? null)
+          setDashboardStatsError(null)
+          return
+        }
+
+        if (!cancelled) {
+          setDashboardStats(null)
+          setDashboardStatsError('Failed to load dashboard stats.')
+        }
+      } catch {
+        if (!cancelled) {
+          setDashboardStats(null)
+          setDashboardStatsError('Failed to load dashboard stats.')
+        }
+      }
+    }
+
+    void fetchDashboardStats()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const inventoryHealthCritical = dashboardStats?.inventory_health?.critical ?? criticalItems.length
+  const inventoryHealthNormal = dashboardStats?.inventory_health?.normal ?? Math.max(
+    inventoryStateSnapshot.items.length - criticalItems.length - warningItems.length,
+    0
+  )
+  const todayStats = dashboardStats?.today_adjustments ?? null
 
   const todaysScans = useMemo(
     () => pendingScans.filter((scan) => isToday(scan.timestamp)).length,
@@ -92,7 +173,7 @@ const DashboardPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#0f172a] mb-1">Dashboard</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Dashboard</h1>
         <p className="text-[#64748b]">Inventory status and actions.</p>
       </div>
 
@@ -104,7 +185,7 @@ const DashboardPage = () => {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
             <p className="text-xs uppercase tracking-wide text-red-700">Critical</p>
-            <p className="text-3xl font-bold text-red-700">{criticalItems.length}</p>
+            <p className="text-3xl font-bold text-red-700">{inventoryHealthCritical}</p>
             <p className="text-xs text-gray-600">Requires immediate restock</p>
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -114,85 +195,77 @@ const DashboardPage = () => {
           </div>
           <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
             <p className="text-xs uppercase tracking-wide text-gray-700">Normal</p>
-            <p className="text-3xl font-bold text-black">
-              {Math.max(
-                inventoryStateSnapshot.items.length - criticalItems.length - warningItems.length,
-                0
-              )}
-            </p>
+            <p className="text-3xl font-bold text-black">{inventoryHealthNormal}</p>
             <p className="text-xs text-gray-600">Healthy inventory level</p>
           </div>
         </CardContent>
       </Card>
 
       {/* Key Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${showRedLineAlerts ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+        {showRedLineAlerts && (
         <Card className="border-l-4 border-l-[#dc2626]">
           <CardHeader>
-            <CardTitle as="h2" className="text-[#b91c1c]">
+            <CardTitle as="h2" className="text-[#111827]">
               Red Line Alerts
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {criticalItems.length === 0 && warningItems.length === 0 ? (
-              <p className="text-sm text-gray-600">No low stock items.</p>
-            ) : (
-              <>
-                {criticalItems.slice(0, 4).map((item) => (
-                  <div
-                    key={item.itemId}
-                    className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-black">{item.name}</p>
-                      <p className="text-xs text-gray-600">
-                        {item.sku} • Stock {item.currentStock} / Buffer {item.safetyBuffer}
-                      </p>
-                    </div>
-                    <Badge variant="destructive">Critical</Badge>
-                  </div>
-                ))}
+            {redLineItems.slice(0, 7).map((item) => {
+              const safetyBuffer = item.safetyBuffer ?? 0
+              const isCritical = item.quantity <= 0
 
-                {warningItems.slice(0, 3).map((item) => (
-                  <div
-                    key={item.itemId}
-                    className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-black">{item.name}</p>
-                      <p className="text-xs text-gray-600">
-                        {item.sku} • Stock {item.currentStock} / Buffer {item.safetyBuffer}
-                      </p>
-                    </div>
-                    <Badge variant="warning">Low</Badge>
-                  </div>
-                ))}
-              </>
-            )}
+              return (
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-black">{item.name}</p>
+                  <p className="text-xs text-gray-600">
+                    {item.sku} • Stock {item.quantity} / Buffer {safetyBuffer}
+                  </p>
+                </div>
+                <Badge variant={isCritical ? 'destructive' : 'warning'}>
+                  {isCritical ? 'Critical' : 'Low'}
+                </Badge>
+              </div>
+              )
+            })}
           </CardContent>
         </Card>
+        )}
 
         <Card className="bg-[#fbfefd]">
           <CardHeader>
             <CardTitle as="h2">Daily Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2">
               <span className="text-sm text-gray-700">Scans Today</span>
-              <span className="text-lg font-bold text-black">{todaysScans}</span>
+              <span className="text-lg font-bold text-black">{todayStats?.scans ?? todaysScans}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
               <span className="text-sm text-gray-700">Wastage Today</span>
-              <span className="text-lg font-bold text-amber-700">{todaysWastage}</span>
+              <span className="text-lg font-bold text-amber-700">{todayStats?.wastage ?? todaysWastage}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2">
               <span className="text-sm text-gray-700">Transfers Today</span>
-              <span className="text-lg font-bold text-black">{todaysTransfers}</span>
+              <span className="text-lg font-bold text-black">{todayStats?.transfers ?? todaysTransfers}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-[#bde1d3] bg-[#ebf7f2] px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-[#bde1d3] bg-[#ebf7f2] px-3 py-2">
               <span className="text-sm text-[#475569]">Pending Sync</span>
               <span className="text-lg font-bold text-[#1e8572]">{totalPending}</span>
             </div>
+            {dashboardStatsError && (
+              <p className="text-xs text-amber-700">{dashboardStatsError}</p>
+            )}
+            {!showRedLineAlerts && (
+              <div className="flex items-center justify-between rounded-xl border border-[#d6eadf] bg-[#f3fbf6] px-3 py-2">
+                <span className="text-sm text-[#475569]">All systems green</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#166534]">All clear</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -253,7 +326,7 @@ const DashboardPage = () => {
               {forecastTopRisk.map((row) => (
                 <div
                   key={row.itemId}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 px-3 py-2"
                 >
                   <div>
                     <p className="text-sm font-semibold text-black">{row.name}</p>
