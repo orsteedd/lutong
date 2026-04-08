@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components'
 import { useAuthStore } from '@/store'
 
 const AdminPage = () => {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const isAdmin = user?.role === 'admin'
-  const [addEmployeeOpen, setAddEmployeeOpen] = useState(false)
-  const [permissionsOpen, setPermissionsOpen] = useState(false)
+  const [activePanel, setActivePanel] = useState<'add' | 'permissions' | null>(null)
 
   return (
     <div className="space-y-6">
@@ -27,7 +26,7 @@ const AdminPage = () => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_360px]">
         <Card>
           <CardHeader>
             <CardTitle as="h2">Employee Management</CardTitle>
@@ -40,7 +39,7 @@ const AdminPage = () => {
                 variant="outline"
                 className="h-9 mt-3"
                 disabled={!isAdmin}
-                onClick={() => setAddEmployeeOpen(true)}
+                onClick={() => setActivePanel('add')}
               >
                 Add Employee
               </Button>
@@ -52,7 +51,7 @@ const AdminPage = () => {
                 variant="outline"
                 className="h-9 mt-3"
                 disabled={!isAdmin}
-                onClick={() => setPermissionsOpen(true)}
+                onClick={() => setActivePanel('permissions')}
               >
                 Set Permissions
               </Button>
@@ -77,43 +76,88 @@ const AdminPage = () => {
             </Button>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Command Side Panel</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {activePanel === null && (
+              <p className="text-sm text-[#64748b]">
+                Select Add Employee or Set Permissions to edit details without leaving the command center.
+              </p>
+            )}
+
+            {activePanel === 'add' && (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-[#111827]">Add Employee</p>
+                <label className="block text-xs text-[#64748b]">
+                  Full Name
+                  <input
+                    type="text"
+                    className="mt-1 h-10 w-full rounded-xl border border-[#dceae4] bg-white px-3 text-sm"
+                    placeholder="e.g. Maria Santos"
+                    disabled={!isAdmin}
+                  />
+                </label>
+                <label className="block text-xs text-[#64748b]">
+                  Username
+                  <input
+                    type="text"
+                    className="mt-1 h-10 w-full rounded-xl border border-[#dceae4] bg-white px-3 text-sm"
+                    placeholder="e.g. maria.s"
+                    disabled={!isAdmin}
+                  />
+                </label>
+                <label className="block text-xs text-[#64748b]">
+                  Role
+                  <select
+                    className="mt-1 h-10 w-full rounded-xl border border-[#dceae4] bg-white px-3 text-sm"
+                    disabled={!isAdmin}
+                  >
+                    <option>staff</option>
+                    <option>admin</option>
+                  </select>
+                </label>
+                <div className="flex gap-2">
+                  <Button className="h-9" disabled={!isAdmin}>Save Employee</Button>
+                  <Button variant="outline" className="h-9" onClick={() => setActivePanel(null)}>Close</Button>
+                </div>
+              </div>
+            )}
+
+            {activePanel === 'permissions' && (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-[#111827]">Set Permissions</p>
+                <label className="block text-xs text-[#64748b]">
+                  Employee
+                  <input
+                    type="text"
+                    className="mt-1 h-10 w-full rounded-xl border border-[#dceae4] bg-white px-3 text-sm"
+                    placeholder="Select employee"
+                    disabled={!isAdmin}
+                  />
+                </label>
+                <label className="block text-xs text-[#64748b]">
+                  Access Level
+                  <select
+                    className="mt-1 h-10 w-full rounded-xl border border-[#dceae4] bg-white px-3 text-sm"
+                    disabled={!isAdmin}
+                  >
+                    <option>Inventory + Delivery + Scan + Reports</option>
+                    <option>Inventory + Scan</option>
+                    <option>Read Only</option>
+                  </select>
+                </label>
+                <div className="flex gap-2">
+                  <Button className="h-9" disabled={!isAdmin}>Save Permissions</Button>
+                  <Button variant="outline" className="h-9" onClick={() => setActivePanel(null)}>Close</Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      <Dialog open={addEmployeeOpen} onOpenChange={setAddEmployeeOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Employee</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <p className="text-sm text-[#475569]">
-              Employee creation UI is intentionally streamlined for this phase. Connect this action to your backend employee endpoint.
-            </p>
-          </DialogBody>
-          <DialogFooter>
-            <DialogClose className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
-              Close
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={permissionsOpen} onOpenChange={setPermissionsOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Set Permissions</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <p className="text-sm text-[#475569]">
-              Permission management UI is intentionally streamlined for this phase. Connect this action to your backend role management endpoint.
-            </p>
-          </DialogBody>
-          <DialogFooter>
-            <DialogClose className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
-              Close
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

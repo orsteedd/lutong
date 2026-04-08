@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, AdminOnlyAction } from '@/components'
 import { useAuthStore, useInventoryStore, useModeActions, useOfflineQueueStore } from '@/store'
+import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
 import { verifyDeliverySession, type DeliverySessionData } from '@/lib/deliveryVerification'
 
 interface DraftDeliveryLine {
@@ -24,6 +25,7 @@ const DeliveryPage = () => {
   const user = useAuthStore((state) => state.user)
   const { setMode } = useModeActions()
   const pendingScansState = useOfflineQueueStore((state) => state.pendingScans)
+  const scanQueueState = useOfflineQueueStore((state) => state.scanQueue)
   const inventoryItemsState = useInventoryStore((state) => state.items)
   const [customSessions, setCustomSessions] = useState<DeliverySessionData[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState('')
@@ -36,7 +38,12 @@ const DeliveryPage = () => {
   const isAdmin = user?.role === 'admin'
 
   const pendingScans = Array.isArray(pendingScansState) ? pendingScansState : []
+  const scanQueue = Array.isArray(scanQueueState) ? scanQueueState : []
   const inventoryItems = Array.isArray(inventoryItemsState) ? inventoryItemsState : []
+  const inventorySnapshot = useMemo(
+    () => computeInventoryStateSnapshot(inventoryItems, scanQueue),
+    [inventoryItems, scanQueue]
+  )
   const selectedInventoryItem = useMemo(
     () => inventoryItems.find((item) => item.sku === draftSku),
     [draftSku, inventoryItems]
@@ -472,6 +479,89 @@ const DeliveryPage = () => {
           </CardContent>
         </Card>
       )}
+
+      <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Verification Status Record</CardTitle>
+            <p className="text-sm text-[#64748b]">Receive verification rows for the active delivery session.</p>
+          </CardHeader>
+          <CardContent>
+            {report.rows.length === 0 ? (
+              <p className="text-sm text-[#64748b]">No scanned rows yet for this session.</p>
+            ) : (
+              <div className="overflow-auto max-h-[55vh] rounded-xl border border-[#e8efec]">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 z-10 bg-[#f8fcfa]">
+                    <tr className="border-b border-[#dceae4] text-left">
+                      <th className="px-3 py-2 font-semibold text-[#111827]">SKU</th>
+                      <th className="px-3 py-2 font-semibold text-[#111827]">Expected</th>
+                      <th className="px-3 py-2 font-semibold text-[#111827]">Actual</th>
+                      <th className="px-3 py-2 font-semibold text-[#111827]">Variance</th>
+                      <th className="px-3 py-2 font-semibold text-[#111827]">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.rows.map((row) => (
+                      <tr key={row.sku} className="border-b border-[#eef5f1] last:border-b-0 bg-white">
+                        <td className="px-3 py-3 font-semibold text-[#111827]">{row.sku}</td>
+                        <td className="px-3 py-3 text-[#111827]">{row.expectedQty}</td>
+                        <td className="px-3 py-3 text-[#111827]">{row.actualQty}</td>
+                        <td className="px-3 py-3 text-[#64748b]">{row.variance > 0 ? '+' : ''}{row.variance}</td>
+                        <td className="px-3 py-3">
+                          <Badge variant={row.status === 'matched' ? 'success' : 'warning'}>{row.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">History Table</CardTitle>
+            <p className="text-sm text-[#64748b]">
+              SKU, Stock, Display, and Pending To Display in one desktop command view.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {inventorySnapshot.items.length === 0 ? (
+              <p className="text-sm text-[#64748b]">No inventory history records available yet.</p>
+            ) : (
+              <div className="overflow-auto max-h-[55vh] rounded-xl border border-[#e8efec]">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 z-10 bg-[#f8fcfa]">
+                    <tr className="border-b border-[#dceae4] text-left">
+                      <th className="px-3 py-2 font-semibold text-[#111827]">SKU</th>
+                      <th className="px-3 py-2 font-semibold text-[#111827]">Item</th>
+                      <th className="px-3 py-2 font-semibold text-[#111827]">Stock</th>
+                      <th className="px-3 py-2 font-semibold text-[#111827]">Display</th>
+                      <th className="px-3 py-2 font-semibold text-[#111827]">Pending To Display</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inventorySnapshot.items
+                      .slice()
+                      .sort((a, b) => a.sku.localeCompare(b.sku))
+                      .map((item) => (
+                        <tr key={item.itemId} className="border-b border-[#eef5f1] last:border-b-0 bg-white">
+                          <td className="px-3 py-3 font-semibold text-[#111827]">{item.sku}</td>
+                          <td className="px-3 py-3 text-[#111827]">{item.name}</td>
+                          <td className="px-3 py-3 text-[#111827]">{item.projectedStockQty}</td>
+                          <td className="px-3 py-3 text-sky-700">{item.projectedDisplayQty}</td>
+                          <td className="px-3 py-3 text-[#64748b]">{item.pendingToDisplay}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className={`border-[#bde1d3] bg-[#ebf7f2] shadow-[0_14px_40px_rgba(15,23,42,0.06)] ${SHOW_ADVANCED_DELIVERY_UI ? '' : 'hidden'}`}>
         <CardContent className="space-y-4 p-4 md:p-5">

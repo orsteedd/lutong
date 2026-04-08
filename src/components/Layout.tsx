@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { path: '/inventory', label: 'Inventory', icon: '📦' },
   { path: '/scan', label: 'Scan', icon: '📱' },
   { path: '/delivery', label: 'Delivery', icon: '🚚' },
-  { path: '/reports', label: 'Reports', icon: '📈' },
+  { path: '/reports', label: 'Audit', icon: '📈' },
   { path: '/admin', label: 'Admin', icon: '⚙️' },
 ] as const
 
@@ -144,8 +144,8 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen px-2 py-2 md:h-screen md:overflow-hidden md:px-5 md:py-5">
-      <div className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-[1500px] overflow-hidden rounded-[30px] border border-[#eadad4] bg-[#f7f3f1] shadow-[0_24px_64px_rgba(15,23,42,0.12)] md:min-h-0 md:h-[calc(100vh-2.5rem)]">
-        <aside className="hidden md:flex w-[230px] flex-col border-r border-[#e8e5e2] bg-[#FDFCFB]">
+      <div className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-[1900px] overflow-hidden rounded-[30px] border border-[#eadad4] bg-[#f7f3f1] shadow-[0_24px_64px_rgba(15,23,42,0.12)] md:min-h-0 md:h-[calc(100vh-2.5rem)]">
+        <aside className="hidden md:flex w-[280px] shrink-0 flex-col border-r border-[#e8e5e2] bg-[#FDFCFB]">
           <div className="px-5 py-6 border-b border-[#ece8e4]">
             <div className="flex items-center gap-3">
               <img
@@ -245,7 +245,7 @@ const Layout = ({ children }: LayoutProps) => {
           </header>
 
           <main className="flex-1 overflow-auto bg-[#f8f4f2]">
-            <div className="mx-auto w-full max-w-[1200px] px-4 py-6 md:px-6 md:py-8">
+            <div className="mx-auto w-full max-w-none px-4 py-6 md:px-8 md:py-8">
               {children}
             </div>
           </main>

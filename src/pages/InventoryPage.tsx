@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { AdminOnlyAction, Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, EmptyState } from '@/components'
+import { AdminOnlyAction, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, EmptyState } from '@/components'
 import { useAuthStore, useInventoryStore, useOfflineQueueStore } from '@/store'
 import { useActivityLogStore } from '@/store/useActivityLogStore'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
@@ -11,13 +11,6 @@ type InventoryOperationMode = 'delivery' | 'transfer' | 'wastage'
 
 const INVENTORY_DELIVERY_SESSION_PREFIX = 'INV-DEL'
 const SHOW_ADVANCED_INVENTORY_UI = false
-
-const closeRowActionsMenu = (event: MouseEvent<HTMLButtonElement>) => {
-  const details = event.currentTarget.closest('details')
-  if (details instanceof HTMLDetailsElement) {
-    details.removeAttribute('open')
-  }
-}
 
 const buildSkuBadgeSvg = (sku: string) => {
   const safeSku = sku
@@ -61,7 +54,6 @@ const InventoryPage = () => {
   const [operationMessage, setOperationMessage] = useState<string | null>(null)
   const [qrBySku, setQrBySku] = useState<Record<string, string>>({})
   const [qrMessage, setQrMessage] = useState<string | null>(null)
-  const [addItemModalOpen, setAddItemModalOpen] = useState(false)
   const [quickAdjustmentModalOpen, setQuickAdjustmentModalOpen] = useState(false)
   const [stockSearch, setStockSearch] = useState('')
   const [stockCategoryFilter, setStockCategoryFilter] = useState('all')
@@ -467,14 +459,93 @@ const InventoryPage = () => {
             <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Inventory</h1>
             <p className="text-[#64748b]">Set Up only: Create Item and Assign QR.</p>
           </div>
-
-          <div className="flex flex-wrap gap-2 md:justify-end">
-            <Button variant="default" className="h-11" onClick={() => setAddItemModalOpen(true)} disabled={!isAdmin}>
-              + Add New Item
-            </Button>
-          </div>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Create Item Workspace</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!isAdmin && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Inventory write actions are restricted to admins.
+            </div>
+          )}
+          <div className="grid grid-cols-1 xl:grid-cols-6 gap-3">
+            <label className="text-sm text-[#334155] xl:col-span-1">
+              Auto SKU
+              <input
+                type="text"
+                value={nextSku}
+                readOnly
+                className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
+              />
+            </label>
+            <label className="text-sm text-[#334155] xl:col-span-2">
+              Item Name
+              <input
+                type="text"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                placeholder="Item name"
+                className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
+              />
+            </label>
+            <label className="text-sm text-[#334155] xl:col-span-1">
+              Category
+              <input
+                type="text"
+                value={draftCategory}
+                onChange={(e) => setDraftCategory(e.target.value)}
+                placeholder="Category"
+                className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
+              />
+            </label>
+            <label className="text-sm text-[#334155] xl:col-span-1">
+              Unit
+              <input
+                type="text"
+                value={draftUnit}
+                onChange={(e) => setDraftUnit(e.target.value)}
+                placeholder="pcs, kg"
+                className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
+              />
+            </label>
+            <label className="text-sm text-[#334155] xl:col-span-1">
+              Quantity
+              <input
+                type="number"
+                min={0}
+                value={draftQuantity}
+                onChange={(e) => setDraftQuantity(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
+              />
+            </label>
+            <label className="text-sm text-[#334155] xl:col-span-1">
+              Safety Buffer
+              <input
+                type="number"
+                min={0}
+                value={draftSafetyBuffer}
+                onChange={(e) => setDraftSafetyBuffer(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
+                disabled={!isAdmin}
+              />
+            </label>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
+            <AdminOnlyAction title="Only admins can add inventory items.">
+              <Button className="h-11" onClick={handleAddItem}>Create Item</Button>
+            </AdminOnlyAction>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className={`grid grid-cols-1 md:grid-cols-4 gap-4 ${SHOW_ADVANCED_INVENTORY_UI ? '' : 'hidden'}`}>
         <Card>
@@ -505,100 +576,6 @@ const InventoryPage = () => {
           </CardContent>
         </Card>
       </div>
-
-      <Dialog open={addItemModalOpen} onOpenChange={setAddItemModalOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Add Inventory Item</DialogTitle>
-          </DialogHeader>
-          <DialogBody className="space-y-4">
-            {!isAdmin && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                Inventory write actions are restricted to admins.
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label className="text-sm text-[#334155]">
-                Auto SKU
-                <input
-                  type="text"
-                  value={nextSku}
-                  readOnly
-                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-[#f8fbfa] px-3 py-2 text-[#64748b]"
-                />
-              </label>
-              <label className="text-sm text-[#334155]">
-                Item Name
-                <input
-                  type="text"
-                  value={draftName}
-                  onChange={(e) => setDraftName(e.target.value)}
-                  placeholder="Item name"
-                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
-                  disabled={!isAdmin}
-                />
-              </label>
-              <label className="text-sm text-[#334155]">
-                Category
-                <input
-                  type="text"
-                  value={draftCategory}
-                  onChange={(e) => setDraftCategory(e.target.value)}
-                  placeholder="Category"
-                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
-                  disabled={!isAdmin}
-                />
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label className="text-sm text-[#334155]">
-                Unit
-                <input
-                  type="text"
-                  value={draftUnit}
-                  onChange={(e) => setDraftUnit(e.target.value)}
-                  placeholder="pcs, kg, bottle"
-                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
-                  disabled={!isAdmin}
-                />
-              </label>
-              <label className="text-sm text-[#334155]">
-                Current Quantity
-                <input
-                  type="number"
-                  min={0}
-                  value={draftQuantity}
-                  onChange={(e) => setDraftQuantity(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
-                  disabled={!isAdmin}
-                />
-              </label>
-              <label className="text-sm text-[#334155]">
-                Safety Buffer
-                <input
-                  type="number"
-                  min={0}
-                  value={draftSafetyBuffer}
-                  onChange={(e) => setDraftSafetyBuffer(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-[#d6e8e0] bg-white px-3 py-2"
-                  disabled={!isAdmin}
-                />
-              </label>
-            </div>
-
-            {formMessage && <p className="text-xs text-[#64748b]">{formMessage}</p>}
-          </DialogBody>
-          <DialogFooter>
-            <DialogClose className="h-11 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
-              Cancel
-            </DialogClose>
-            <AdminOnlyAction title="Only admins can add inventory items.">
-              <Button className="h-11" onClick={handleAddItem}>Add Item</Button>
-            </AdminOnlyAction>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={quickAdjustmentModalOpen} onOpenChange={setQuickAdjustmentModalOpen}>
         <DialogContent className="w-[min(96vw,72rem)] max-w-none max-h-[90vh]">
@@ -701,7 +678,7 @@ const InventoryPage = () => {
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-2">
-              <CardTitle as="h2">Current Stock List</CardTitle>
+              <CardTitle as="h2">Inventory Command Table</CardTitle>
               <span
                 className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d6e8e0] text-[10px] text-[#64748b]"
                 title="QR payload is the item SKU so scanners can reuse the same code format."
@@ -753,121 +730,85 @@ const InventoryPage = () => {
               message="No items match your search or category filter."
             />
           ) : (
-            <div className="space-y-2">
-              {filteredStockItems.map((item) => {
-                const baseItem = items.find((source) => source.sku === item.sku)
-                const safetyBuffer = baseItem?.safetyBuffer ?? 0
-                const unit = baseItem?.unit ?? 'pcs'
-                const category = baseItem?.category ?? 'Uncategorized'
-                const isLow = item.confirmedAvailable <= safetyBuffer
-                const canPrintQr = Boolean(qrBySku[item.sku])
-                return (
-                  <div
-                    key={item.itemId}
-                    className="rounded-xl border border-[#dceae4] bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.02)]"
-                  >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-black">{item.name}</p>
-                        <p className="text-xs text-gray-600">
-                          {item.sku} • {category}
-                        </p>
-                      </div>
+            <div className="overflow-auto max-h-[62vh] rounded-xl border border-[#e8efec]">
+              <table className="min-w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-[#f8fcfa]">
+                  <tr className="border-b border-[#dceae4] text-left">
+                    <th className="px-3 py-2 font-semibold text-[#111827]">SKU</th>
+                    <th className="px-3 py-2 font-semibold text-[#111827]">Item</th>
+                    <th className="px-3 py-2 font-semibold text-[#111827]">Stock</th>
+                    <th className="px-3 py-2 font-semibold text-[#111827]">Display</th>
+                    <th className="px-3 py-2 font-semibold text-[#111827]">Pending To Display</th>
+                    <th className="px-3 py-2 font-semibold text-[#111827]">Total</th>
+                    <th className="px-3 py-2 font-semibold text-[#111827] text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStockItems.map((item) => {
+                    const baseItem = items.find((source) => source.sku === item.sku)
+                    const canPrintQr = Boolean(qrBySku[item.sku])
 
-                      <div className="flex items-center gap-3">
-                        <Badge variant={isLow ? 'warning' : 'success'}>
-                          {item.projectedAvailable} {unit}
-                        </Badge>
-
-                        <details className="relative" data-qr-actions-menu>
-                          <summary className="list-none cursor-pointer rounded-xl border border-[#d6e8e0] bg-white px-3 py-2 text-sm font-medium text-black hover:bg-[#f3f7f5]">
-                            Actions
-                          </summary>
-                          <div className="absolute right-0 z-10 mt-2 w-52 overflow-hidden rounded-xl border border-[#dceae4] bg-white p-1 shadow-lg">
+                    return (
+                      <tr key={item.itemId} className="border-b border-[#eef5f1] last:border-b-0 bg-white">
+                        <td className="px-3 py-3 text-[#111827] font-semibold">{item.sku}</td>
+                        <td className="px-3 py-3 text-[#111827]">
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-xs text-[#64748b]">{baseItem?.category || 'Uncategorized'}</p>
+                        </td>
+                        <td className="px-3 py-3 text-[#111827]">{item.projectedStockQty}</td>
+                        <td className="px-3 py-3 text-sky-700">{item.projectedDisplayQty}</td>
+                        <td className="px-3 py-3 text-[#64748b]">{item.pendingToDisplay}</td>
+                        <td className="px-3 py-3 text-[#111827] font-semibold">{item.projectedAvailable}</td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center justify-end gap-2">
                             <AdminOnlyAction title="Only admins can apply inventory operations.">
-                              <button
-                                type="button"
-                                className={`flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400 ${SHOW_ADVANCED_INVENTORY_UI ? '' : 'hidden'}`}
-                                onClick={(event) => {
-                                  handleOpenQuickAdjustment(item.sku)
-                                  closeRowActionsMenu(event)
-                                }}
+                              <Button
+                                variant="outline"
+                                className="h-8"
+                                onClick={() => handleOpenQuickAdjustment(item.sku)}
                               >
-                                Quick Adjustment
-                              </button>
+                                Adjust
+                              </Button>
                             </AdminOnlyAction>
-                            <button
-                              type="button"
-                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
-                              onClick={(event) => {
-                                handleGenerateQr(item.sku)
-                                closeRowActionsMenu(event)
-                              }}
-                            >
-                              Generate QR
-                            </button>
-                            <button
-                              type="button"
-                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5]"
-                              onClick={(event) => {
-                                handleDownloadQr(item.sku)
-                                closeRowActionsMenu(event)
-                              }}
-                            >
-                              Download SKU
-                            </button>
-                            <button
-                              type="button"
-                              className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                            <Button variant="outline" className="h-8" onClick={() => handleGenerateQr(item.sku)}>
+                              QR
+                            </Button>
+                            <Button variant="outline" className="h-8" onClick={() => handleDownloadQr(item.sku)}>
+                              Download
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="h-8"
                               disabled={!canPrintQr}
-                              onClick={(event) => {
-                                handlePrintQr(item.sku)
-                                closeRowActionsMenu(event)
-                              }}
+                              onClick={() => handlePrintQr(item.sku)}
                             >
-                              Print QR
-                            </button>
+                              Print
+                            </Button>
                             <AdminOnlyAction title="Only admins can remove QR assignments.">
-                              <button
-                                type="button"
-                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
-                                onClick={(event) => {
-                                  handleRemoveQr(item.sku)
-                                  closeRowActionsMenu(event)
-                                }}
+                              <Button
+                                variant="outline"
+                                className="h-8"
+                                onClick={() => handleRemoveQr(item.sku)}
                               >
                                 Remove QR
-                              </button>
+                              </Button>
                             </AdminOnlyAction>
                             <AdminOnlyAction title="Only admins can delete inventory items.">
-                              <button
-                                type="button"
-                                className={`flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50 ${SHOW_ADVANCED_INVENTORY_UI ? '' : 'hidden'}`}
-                                onClick={(event) => {
-                                  handleDeleteItem(item.itemId)
-                                  closeRowActionsMenu(event)
-                                }}
+                              <Button
+                                variant="outline"
+                                className="h-8 text-red-700 border-red-200"
+                                onClick={() => handleDeleteItem(item.itemId)}
                               >
-                                Delete Item
-                              </button>
+                                Delete
+                              </Button>
                             </AdminOnlyAction>
                           </div>
-                        </details>
-                      </div>
-                    </div>
-
-                    {qrBySku[item.sku] && (
-                      <div className="mt-3 rounded-xl border border-[#e2ece8] bg-[#f7fcfa] p-3 max-w-[300px]">
-                        <img
-                          src={qrBySku[item.sku]}
-                          alt={`QR code for ${item.sku}`}
-                          className="h-44 w-44 object-contain"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
 

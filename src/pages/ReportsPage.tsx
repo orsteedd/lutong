@@ -4,7 +4,7 @@ import { useInventoryStore, useOfflineQueueStore } from '@/store'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
 import { buildLowStockAlerts } from '@/lib/lowStockAlerts'
 
-const SHOW_ADVANCED_REPORTS_UI = false
+const SHOW_ADVANCED_REPORTS_UI = true
 
 const ReportsPage = () => {
   const items = useInventoryStore((state) => state.items)
@@ -216,7 +216,7 @@ const ReportsPage = () => {
       <div className={`grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)] ${SHOW_ADVANCED_REPORTS_UI ? '' : 'hidden'}`}>
         <Card className="border-[#dceae4] bg-[#fbfefd] shadow-[0_1px_0_rgba(15,23,42,0.02)]">
           <CardHeader>
-            <CardTitle as="h3">Stock Split</CardTitle>
+            <CardTitle as="h3">Continuous Stock-Level Check</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {stockSplitTotal === 0 ? (

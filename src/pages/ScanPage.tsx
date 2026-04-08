@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import jsQR from 'jsqr'
 import { Button } from '@/components'
 import { useModeActions, useOfflineQueueStore, useScanMode, useUIFeedbackStore } from '@/store'
@@ -709,7 +709,218 @@ const ScanPage = () => {
       : 'Ready to scan'
 
   if (!isMobileCameraView) {
-    return <Navigate to="/" replace />
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Scanning Dashboard</h1>
+          <p className="text-[#64748b]">Desktop mode for Receive, Transfer, Adjust, and Wastage operations.</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+          {(Object.keys(MODE_CONFIG) as ScanType[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={`rounded-2xl border p-4 text-left transition-all ${
+                currentMode === mode
+                  ? 'border-[#B91C1C] bg-[#FDECEC] shadow'
+                  : 'border-[#dceae4] bg-white hover:border-[#cfdad5]'
+              }`}
+              onClick={() => setMode(mode)}
+            >
+              <p className="text-sm font-semibold text-[#111827]">{MODE_CONFIG[mode].label}</p>
+              <p className="mt-1 text-xs text-[#64748b]">{MODE_CONFIG[mode].helper}</p>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-[#dceae4] bg-white p-4">
+            <p className="text-sm font-semibold text-[#111827] mb-2">Scan Input</p>
+            <input
+              ref={qrUploadInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                void handleQrUploadChange(event)
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mb-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                onClick={() => qrUploadInputRef.current?.click()}
+                disabled={isSubmitting}
+              >
+                Upload QR
+              </Button>
+            </div>
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void handleScannerSubmit()
+              }}
+            >
+              <input
+                ref={barcodeInputRef}
+                type="text"
+                value={barcodeInput}
+                onChange={(e) => setBarcode(e.target.value)}
+                onKeyDown={handleScannerKeyDown}
+                className="h-11 w-full rounded-xl border border-[#d6e8e0] bg-white px-3"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                placeholder="SKU, SKU:QTY, or MODE|SKU:QTY"
+                aria-label="Manual scan input"
+              />
+
+              {(currentMode === 'delivery' || currentMode === 'adjust') && (
+                <label className="block text-xs text-[#64748b]">
+                  Session ID
+                  <input
+                    ref={sessionInputRef}
+                    type="text"
+                    value={sessionId}
+                    onChange={(e) => setSessionId(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-[#d6e8e0] bg-white px-3"
+                    placeholder="Enter session ID"
+                  />
+                </label>
+              )}
+
+              {currentMode === 'wastage' && (
+                <label className="block text-xs text-[#64748b]">
+                  Wastage Reason
+                  <input
+                    ref={reasonInputRef}
+                    type="text"
+                    value={wastageReason}
+                    onChange={(e) => setWastageReason(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-[#d6e8e0] bg-white px-3"
+                    placeholder="Enter reason"
+                  />
+                </label>
+              )}
+
+              <Button type="submit" className="h-11" disabled={!barcodeInput.trim() || isSubmitting}>
+                {isSubmitting ? 'Processing...' : `${MODE_CONFIG[currentMode].actionLabel} Scan`}
+              </Button>
+            </form>
+          </div>
+
+          <div className="rounded-2xl border border-[#dceae4] bg-white p-4">
+            <p className="text-sm font-semibold text-[#111827] mb-2">Operational Context</p>
+            <div className="space-y-2 text-sm text-[#334155]">
+              <p>Current Mode: <strong>{MODE_CONFIG[currentMode].label}</strong></p>
+              <p>Pending Queue: <strong>{pendingScans.length}</strong></p>
+              <p>Status: <strong>{isSyncing ? 'Syncing' : 'Ready'}</strong></p>
+              {displayFeedbackType !== 'idle' && displayFeedbackMessage && (
+                <p className={displayFeedbackType === 'error' ? 'text-red-700' : 'text-[#1e8572]'}>
+                  {displayFeedbackMessage}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {detailSheetOpen && scanDraft && (
+          <div className="scan-detail-sheet-backdrop" onClick={handleCloseDetailSheet}>
+            <div className="scan-detail-sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="scan-detail-sheet-header">
+                <div>
+                  <p className="scan-detail-kicker">Scan Details</p>
+                  <h3 className="scan-detail-title">{scanDraft.item.name}</h3>
+                  <p className="scan-detail-subtitle">{scanDraft.sku}</p>
+                </div>
+                <button type="button" className="scan-detail-close" onClick={handleCloseDetailSheet}>✕</button>
+              </div>
+
+              <form
+                className="scan-detail-fields"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void handleConfirmScanDraft()
+                }}
+              >
+                <div className="scan-detail-mode-picker">
+                  <p className="scan-detail-mode-label">Operation Mode</p>
+                  <div className="mode-switcher" role="tablist" aria-label="Scan mode">
+                    {(Object.keys(MODE_CONFIG) as ScanType[]).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={`mode-chip ${currentMode === mode ? 'mode-chip-active' : ''}`}
+                        onClick={() => setMode(mode)}
+                        aria-pressed={currentMode === mode}
+                      >
+                        {MODE_CONFIG[mode].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="scan-detail-label">
+                  Quantity
+                  <input
+                    ref={quantityInputRef}
+                    type="number"
+                    min={1}
+                    value={draftQuantity}
+                    onChange={(e) => setDraftQuantity(e.target.value)}
+                    className="scan-detail-input"
+                  />
+                </label>
+
+                {(currentMode === 'delivery' || currentMode === 'adjust') && (
+                  <label className="scan-detail-label">
+                    Session ID
+                    <input
+                      ref={sessionInputRef}
+                      type="text"
+                      value={sessionId}
+                      onChange={(e) => setSessionId(e.target.value)}
+                      placeholder="Enter session ID"
+                      className="scan-detail-input"
+                    />
+                  </label>
+                )}
+
+                {currentMode === 'wastage' && (
+                  <label className="scan-detail-label">
+                    Wastage Reason
+                    <input
+                      ref={reasonInputRef}
+                      type="text"
+                      value={wastageReason}
+                      onChange={(e) => setWastageReason(e.target.value)}
+                      placeholder="Enter reason"
+                      className="scan-detail-input"
+                    />
+                  </label>
+                )}
+
+                {currentMode === 'transfer' && (
+                  <div className="rounded-xl border border-[#dceae4] bg-[#f7fcfa] px-3 py-2">
+                    <p className="text-xs uppercase tracking-wide text-[#64748b]">Movement</p>
+                    <p className="text-sm font-semibold text-[#111827]">
+                      {TRANSFER_FROM_LOCATION} {'->'} {TRANSFER_TO_LOCATION}
+                    </p>
+                  </div>
+                )}
+                <div className="scan-detail-actions">
+                  <Button variant="outline" className="h-11" type="button" onClick={handleCloseDetailSheet}>Cancel</Button>
+                  <Button className="h-11" type="submit">Confirm Scan</Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
