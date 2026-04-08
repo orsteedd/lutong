@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, EmptyState } from '@/components'
 import { useInventoryStore, useOfflineQueueStore } from '@/store'
 import { computeInventoryStateSnapshot } from '@/lib/inventoryState'
+import { buildLowStockAlerts } from '@/lib/lowStockAlerts'
+
+const SHOW_ADVANCED_REPORTS_UI = false
 
 const ReportsPage = () => {
   const items = useInventoryStore((state) => state.items)
@@ -12,6 +15,7 @@ const ReportsPage = () => {
   const stockSplitTotal = stockMain + stockDisplay
   const stockMainPercent = stockSplitTotal > 0 ? (stockMain / stockSplitTotal) * 100 : 0
   const stockDisplayPercent = stockSplitTotal > 0 ? (stockDisplay / stockSplitTotal) * 100 : 0
+  const lowStockAlerts = useMemo(() => buildLowStockAlerts(snapshot.items, items), [items, snapshot.items])
 
   const reportTypes = [
     'Inventory Summary',
@@ -72,12 +76,46 @@ const ReportsPage = () => {
   return (
     <div className="space-y-6 pb-28">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Reports</h1>
-        <p className="text-[#64748b]">Generate and export reports.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Reports (Audit)</h1>
+        <p className="text-[#64748b]">Flow: Physical Count {'->'} Verify Scan {'->'} Update Global Database.</p>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Low Stock Warning System</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {lowStockAlerts.length === 0 ? (
+            <EmptyState
+              icon="✅"
+              title="No active low stock warnings"
+              message="All tracked items are above their safety buffer."
+            />
+          ) : (
+            <div className="space-y-2">
+              {lowStockAlerts.map((alert) => (
+                <div key={alert.itemId} className="rounded-xl border border-[#dceae4] bg-white px-3 py-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#111827]">{alert.name}</p>
+                      <p className="text-xs text-[#64748b]">{alert.sku}</p>
+                    </div>
+                    <Badge variant={alert.severity === 'critical' ? 'destructive' : 'warning'}>
+                      {alert.severity === 'critical' ? 'Critical' : 'Low'}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-[#64748b]">
+                    Current: {alert.currentStock} | Buffer: {alert.safetyBuffer}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Top Metrics */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-3 md:grid-cols-3 ${SHOW_ADVANCED_REPORTS_UI ? '' : 'hidden'}`}>
         <Card className="border-[#dceae4] bg-[#fbfefd] shadow-[0_1px_0_rgba(15,23,42,0.02)]">
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-3">
@@ -137,7 +175,7 @@ const ReportsPage = () => {
       </div>
 
       {/* Unified Report Toolbar */}
-      <Card className="border-[#dceae4] bg-[#fbfefd] shadow-[0_1px_0_rgba(15,23,42,0.02)]">
+      <Card className={`border-[#dceae4] bg-[#fbfefd] shadow-[0_1px_0_rgba(15,23,42,0.02)] ${SHOW_ADVANCED_REPORTS_UI ? '' : 'hidden'}`}>
         <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap lg:flex-nowrap">
             <label className="min-w-[150px] flex-1">
@@ -175,7 +213,7 @@ const ReportsPage = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <div className={`grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)] ${SHOW_ADVANCED_REPORTS_UI ? '' : 'hidden'}`}>
         <Card className="border-[#dceae4] bg-[#fbfefd] shadow-[0_1px_0_rgba(15,23,42,0.02)]">
           <CardHeader>
             <CardTitle as="h3">Stock Split</CardTitle>
@@ -286,7 +324,7 @@ const ReportsPage = () => {
         </Card>
       </div>
 
-      {reportGenerated && (
+      {SHOW_ADVANCED_REPORTS_UI && reportGenerated && (
         <div className="fixed bottom-4 left-4 right-4 z-20 mx-auto max-w-[1200px]">
           <Card className="border-[#dceae4] bg-white/95 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur">
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">

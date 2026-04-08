@@ -300,11 +300,6 @@ const DashboardPage = () => {
                 New Delivery Check
               </Button>
             </Link>
-            <Link to="/audit" className="block">
-              <Button variant="outline" className="w-full h-12">
-                Open Audit
-              </Button>
-            </Link>
             <Link to="/reports" className="block">
               <Button variant="ghost" className="w-full h-12 border border-[#dceae4]">
                 Daily Report

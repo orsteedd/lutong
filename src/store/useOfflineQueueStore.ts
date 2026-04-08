@@ -129,7 +129,13 @@ const parsePendingPayloadRecord = (
       return null
     }
 
-    if (type !== 'delivery' && type !== 'transfer' && type !== 'wastage' && type !== 'audit') {
+    if (
+      type !== 'delivery' &&
+      type !== 'transfer' &&
+      type !== 'wastage' &&
+      type !== 'adjust' &&
+      type !== 'audit'
+    ) {
       return null
     }
 
@@ -151,7 +157,7 @@ const parsePendingPayloadRecord = (
 
 export interface PendingScan {
   id: string
-  type: 'delivery' | 'transfer' | 'wastage' | 'audit'
+  type: 'delivery' | 'transfer' | 'wastage' | 'adjust' | 'audit'
   sku: string
   name: string
   quantity: number

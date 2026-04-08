@@ -46,10 +46,10 @@ const MODE_CONFIG: Record<
   { label: string; actionLabel: string; feedbackVerb: string; helper: string }
 > = {
   delivery: {
-    label: 'Delivery',
+    label: 'Receive',
     actionLabel: 'Receive',
     feedbackVerb: 'received',
-    helper: 'Record incoming stock',
+    helper: 'Scan item and add to inventory database',
   },
   transfer: {
     label: 'Transfer',
@@ -58,16 +58,16 @@ const MODE_CONFIG: Record<
     helper: 'Move stock between locations',
   },
   wastage: {
-    label: 'Wastage',
+    label: 'Wastage/Damage/Expiry',
     actionLabel: 'Discard',
     feedbackVerb: 'discarded',
     helper: 'Log damaged or expired stock',
   },
-  audit: {
-    label: 'Audit',
-    actionLabel: 'Count',
-    feedbackVerb: 'counted',
-    helper: 'Verify physical stock count',
+  adjust: {
+    label: 'Adjust',
+    actionLabel: 'Adjust',
+    feedbackVerb: 'adjusted',
+    helper: 'Physical count adjustment for audit verification',
   },
 }
 
@@ -220,9 +220,10 @@ const ScanPage = () => {
       modeParam === 'delivery' ||
       modeParam === 'transfer' ||
       modeParam === 'wastage' ||
+      modeParam === 'adjust' ||
       modeParam === 'audit'
     ) {
-      setMode(modeParam)
+      setMode(modeParam === 'audit' ? 'adjust' : modeParam)
     }
     if (sessionParam) {
       setSessionId(sessionParam)
@@ -318,11 +319,19 @@ const ScanPage = () => {
         modeToken !== 'delivery' &&
         modeToken !== 'transfer' &&
         modeToken !== 'wastage' &&
+        modeToken !== 'adjust' &&
+        modeToken !== 'receive' &&
         modeToken !== 'audit'
       ) {
         return { ok: false, error: 'Invalid QR mode tag' }
       }
-      encodedMode = modeToken
+      if (modeToken === 'receive') {
+        encodedMode = 'delivery'
+      } else if (modeToken === 'audit') {
+        encodedMode = 'adjust'
+      } else {
+        encodedMode = modeToken
+      }
       payload = tokens[1].trim()
     }
 
@@ -503,7 +512,7 @@ const ScanPage = () => {
   }, [cameraActive, detailSheetOpen, handleScan, isSubmitting])
 
   const getModeMetadata = (): ScanModeMetadata => {
-    if (currentMode === 'delivery' || currentMode === 'audit') {
+    if (currentMode === 'delivery' || currentMode === 'adjust') {
       return { sessionId: sessionId.trim() }
     }
     if (currentMode === 'wastage') {
@@ -519,7 +528,7 @@ const ScanPage = () => {
   }
 
   const hasRequiredModeInputs = () => {
-    if (currentMode === 'delivery' || currentMode === 'audit') {
+    if (currentMode === 'delivery' || currentMode === 'adjust') {
       return Boolean(sessionId.trim())
     }
     if (currentMode === 'wastage') {
@@ -537,7 +546,7 @@ const ScanPage = () => {
 
     if (!hasRequiredModeInputs()) {
       const msg =
-        currentMode === 'delivery' || currentMode === 'audit'
+        currentMode === 'delivery' || currentMode === 'adjust'
           ? 'Session is required'
           : currentMode === 'wastage'
           ? 'Reason is required for wastage'
@@ -573,7 +582,7 @@ const ScanPage = () => {
                 (scan) => scan.type === 'delivery' && scan.metadata?.sessionId === metadata.sessionId
               ).length + 1
             } lines scanned`
-          : currentMode === 'audit'
+          : currentMode === 'adjust'
             ? `Session ${metadata.sessionId || 'N/A'} • Count logged`
             : currentMode === 'wastage'
               ? `Reason: ${metadata.reason || 'No reason'}`
@@ -642,7 +651,7 @@ const ScanPage = () => {
     if (!detailSheetOpen) return
 
     const timer = setTimeout(() => {
-      if (currentMode === 'delivery' || currentMode === 'audit') {
+      if (currentMode === 'delivery' || currentMode === 'adjust') {
         sessionInputRef.current?.focus()
         return
       }
@@ -889,7 +898,7 @@ const ScanPage = () => {
                 />
               </label>
 
-              {(currentMode === 'delivery' || currentMode === 'audit') && (
+              {(currentMode === 'delivery' || currentMode === 'adjust') && (
                 <label className="scan-detail-label">
                   Session ID
                   <input

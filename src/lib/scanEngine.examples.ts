@@ -110,7 +110,7 @@ export async function exampleErrorHandling() {
 // ============================================================================
 
 export async function exampleScanTypes() {
-  const scanTypes: ScanType[] = ['transfer', 'wastage', 'delivery', 'audit']
+  const scanTypes: ScanType[] = ['transfer', 'wastage', 'delivery', 'adjust']
 
   for (const type of scanTypes) {
     const result = await processScanInput('SKU-001', 5, type)

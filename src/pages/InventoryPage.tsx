@@ -10,6 +10,7 @@ import QRCode from 'qrcode'
 type InventoryOperationMode = 'delivery' | 'transfer' | 'wastage'
 
 const INVENTORY_DELIVERY_SESSION_PREFIX = 'INV-DEL'
+const SHOW_ADVANCED_INVENTORY_UI = false
 
 const closeRowActionsMenu = (event: MouseEvent<HTMLButtonElement>) => {
   const details = event.currentTarget.closest('details')
@@ -464,6 +465,7 @@ const InventoryPage = () => {
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Inventory</h1>
+            <p className="text-[#64748b]">Set Up only: Create Item and Assign QR.</p>
           </div>
 
           <div className="flex flex-wrap gap-2 md:justify-end">
@@ -474,7 +476,7 @@ const InventoryPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-4 gap-4 ${SHOW_ADVANCED_INVENTORY_UI ? '' : 'hidden'}`}>
         <Card>
           <CardContent className="pt-6">
             <p className="text-xs uppercase tracking-wide text-gray-600">Items</p>
@@ -708,7 +710,7 @@ const InventoryPage = () => {
                 i
               </span>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row lg:w-[420px]">
+            <div className={`flex flex-col gap-2 sm:flex-row lg:w-[420px] ${SHOW_ADVANCED_INVENTORY_UI ? '' : 'hidden'}`}>
               <label className="flex-1">
                 <span className="sr-only">Search stock items</span>
                 <input
@@ -785,7 +787,7 @@ const InventoryPage = () => {
                             <AdminOnlyAction title="Only admins can apply inventory operations.">
                               <button
                                 type="button"
-                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400"
+                                className={`flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-[#f3f7f5] disabled:cursor-not-allowed disabled:text-gray-400 ${SHOW_ADVANCED_INVENTORY_UI ? '' : 'hidden'}`}
                                 onClick={(event) => {
                                   handleOpenQuickAdjustment(item.sku)
                                   closeRowActionsMenu(event)
@@ -840,7 +842,7 @@ const InventoryPage = () => {
                             <AdminOnlyAction title="Only admins can delete inventory items.">
                               <button
                                 type="button"
-                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"
+                                className={`flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50 ${SHOW_ADVANCED_INVENTORY_UI ? '' : 'hidden'}`}
                                 onClick={(event) => {
                                   handleDeleteItem(item.itemId)
                                   closeRowActionsMenu(event)

@@ -43,7 +43,7 @@ export const runScanSystemSimulation = async (count: number): Promise<Simulation
   // Keep simulation isolated from existing work queue.
   store.clearAllQueues()
 
-  const modes: ScanType[] = ['transfer', 'delivery', 'audit', 'wastage']
+  const modes: ScanType[] = ['transfer', 'delivery', 'adjust', 'wastage']
   const skus = ['SKU-001', 'SKU-002', 'SKU-003', 'SKU-004', 'SKU-005', 'SKU-006']
   const latency: number[] = []
   const duplicateWindowMs = 3000

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { useApprovalStore, useOfflineQueueStore } from '@/store'
+import { useOfflineQueueStore } from '@/store'
 import { useAuthStore } from '@/store/useAuthStore'
-import { Button, Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components'
 
 interface LayoutProps {
   children: ReactNode
@@ -14,14 +13,11 @@ const NAV_ITEMS = [
   { path: '/inventory', label: 'Inventory', icon: '📦' },
   { path: '/scan', label: 'Scan', icon: '📱' },
   { path: '/delivery', label: 'Delivery', icon: '🚚' },
-  { path: '/audit', label: 'Audit', icon: '✓' },
-  { path: '/approvals', label: 'Approvals', icon: '✅' },
-  { path: '/activity', label: 'Activity', icon: '🧾' },
   { path: '/reports', label: 'Reports', icon: '📈' },
   { path: '/admin', label: 'Admin', icon: '⚙️' },
 ] as const
 
-const ADMIN_ONLY_PATHS = new Set(['/approvals', '/activity', '/admin'])
+const ADMIN_ONLY_PATHS = new Set(['/admin'])
 
 const getPageTitle = (pathname: string) => {
   const match = NAV_ITEMS.find((item) => item.path === pathname)
@@ -32,32 +28,17 @@ const Layout = ({ children }: LayoutProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [backendHealth, setBackendHealth] = useState<'checking' | 'online' | 'db-error' | 'offline'>('checking')
-  const [conflictDialogOpen, setConflictDialogOpen] = useState(false)
-  const [retryTick, setRetryTick] = useState(() => Date.now())
-  const hasAutoOpenedConflictRef = useRef(false)
   const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
-  const approvalRecords = useApprovalStore((state) => state.records)
   const isAdmin = user?.role === 'admin'
   const pendingScans = useOfflineQueueStore((state) => state.pendingScans)
   const wastageLogs = useOfflineQueueStore((state) => state.wastageLogs)
   const transferLogs = useOfflineQueueStore((state) => state.transferLogs)
-  const unresolvedConflicts = useOfflineQueueStore((state) => state.unresolvedConflicts)
-  const isSyncing = useOfflineQueueStore((state) => state.isSyncing)
-  const syncStatus = useOfflineQueueStore((state) => state.syncStatus)
-  const syncError = useOfflineQueueStore((state) => state.syncError)
-  const nextRetryAt = useOfflineQueueStore((state) => state.nextRetryAt)
-  const syncRetryCount = useOfflineQueueStore((state) => state.syncRetryCount)
-  const syncPendingScans = useOfflineQueueStore((state) => state.syncPendingScans)
-  const retrySync = useOfflineQueueStore((state) => state.retrySync)
-  const removeScan = useOfflineQueueStore((state) => state.removeScan)
-  const clearUnresolvedConflicts = useOfflineQueueStore((state) => state.clearUnresolvedConflicts)
 
   const safePendingScans = Array.isArray(pendingScans) ? pendingScans : []
   const safeWastageLogs = Array.isArray(wastageLogs) ? wastageLogs : []
   const safeTransferLogs = Array.isArray(transferLogs) ? transferLogs : []
-  const safeUnresolvedConflicts = Array.isArray(unresolvedConflicts) ? unresolvedConflicts : []
 
   const isActive = (path: string) => location.pathname === path
   const visibleNavItems = useMemo(
@@ -69,14 +50,10 @@ const Layout = ({ children }: LayoutProps) => {
     [visibleNavItems]
   )
   const mobileNavItems = useMemo(
-    () => visibleNavItems.filter((item) => ['/', '/scan', '/delivery', '/audit', '/approvals'].includes(item.path)),
+    () => visibleNavItems.filter((item) => ['/', '/inventory', '/scan', '/delivery', '/reports', '/admin'].includes(item.path)),
     [visibleNavItems]
   )
   const pageTitle = getPageTitle(location.pathname)
-  const pendingApprovalsCount = useMemo(
-    () => approvalRecords.filter((record) => record.status === 'pending').length,
-    [approvalRecords]
-  )
 
   const pendingCount = useMemo(
     () =>
@@ -85,17 +62,6 @@ const Layout = ({ children }: LayoutProps) => {
       safeTransferLogs.filter((item) => !item.synced).length,
     [safePendingScans, safeTransferLogs, safeWastageLogs]
   )
-
-  const activeUnresolvedConflicts = useMemo(
-    () => safeUnresolvedConflicts,
-    [safeUnresolvedConflicts]
-  )
-
-  const syncState: 'synced' | 'pending' | 'error' = useMemo(() => {
-    if (syncStatus === 'error') return 'error'
-    if (isSyncing || pendingCount > 0 || syncStatus === 'pending') return 'pending'
-    return 'synced'
-  }, [isSyncing, pendingCount, syncStatus])
 
   const systemStatusTone: 'red' | 'green' = backendHealth === 'online' ? 'green' : 'red'
 
@@ -117,66 +83,6 @@ const Layout = ({ children }: LayoutProps) => {
       : backendHealth === 'db-error'
         ? 'Database disconnected'
         : 'Offline'
-
-  const retryCountdownSeconds = useMemo(() => {
-    if (!nextRetryAt) return null
-    const remaining = Math.max(0, Math.ceil((nextRetryAt - retryTick) / 1000))
-    return remaining
-  }, [nextRetryAt, retryTick])
-
-  const syncButtonTitle =
-    retryCountdownSeconds && retryCountdownSeconds > 0
-      ? `Auto retry in ${retryCountdownSeconds}s`
-      : syncState === 'error'
-        ? 'Retry sync'
-        : 'Sync pending records'
-
-  const handleSyncClick = async () => {
-    if (syncState === 'error') {
-      if (activeUnresolvedConflicts.length > 0) {
-        setConflictDialogOpen(true)
-        return
-      }
-      await retrySync()
-      return
-    }
-    await syncPendingScans()
-  }
-
-  const handleDropConflictRecord = async (recordId: string) => {
-    removeScan(recordId)
-    await retrySync()
-  }
-
-  const handleClearConflictList = () => {
-    clearUnresolvedConflicts()
-  }
-
-  useEffect(() => {
-    if (activeUnresolvedConflicts.length === 0) {
-      hasAutoOpenedConflictRef.current = false
-      return
-    }
-
-    if (syncStatus === 'error' && !hasAutoOpenedConflictRef.current) {
-      setConflictDialogOpen(true)
-      hasAutoOpenedConflictRef.current = true
-    }
-
-    if (syncStatus !== 'error') {
-      hasAutoOpenedConflictRef.current = false
-    }
-  }, [activeUnresolvedConflicts.length, syncStatus])
-
-  useEffect(() => {
-    if (!nextRetryAt) return
-
-    const timer = setInterval(() => {
-      setRetryTick(Date.now())
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [nextRetryAt])
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true)
@@ -264,11 +170,6 @@ const Layout = ({ children }: LayoutProps) => {
                 <span className={`${isActive(item.path) ? 'text-[#B91C1C]' : 'text-[#111827]'} grayscale`}>{item.icon}</span>
                 <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                   <span>{item.label}</span>
-                  {item.path === '/approvals' && pendingApprovalsCount > 0 && (
-                    <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full border border-[#F3C4C4] bg-[#FDECEC] px-1.5 py-0.5 text-[11px] font-bold leading-none text-[#B91C1C]">
-                      {pendingApprovalsCount}
-                    </span>
-                  )}
                 </span>
               </Link>
             ))}
@@ -301,45 +202,9 @@ const Layout = ({ children }: LayoutProps) => {
               </div>
 
               <div className="flex items-center gap-2 md:gap-3">
-                <button
-                  type="button"
-                  className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
-                    syncState === 'error'
-                      ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
-                      : syncState === 'pending'
-                        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                        : 'border-[#e5d9d4] bg-white text-[#334155] hover:bg-[#f8f3f1]'
-                  } ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  onClick={handleSyncClick}
-                  disabled={isSyncing}
-                  title={syncButtonTitle}
-                >
-                  <span>{isSyncing ? 'Syncing...' : syncState === 'error' ? 'Sync Error' : syncState === 'pending' ? 'Sync Pending' : 'Synced'}</span>
-                </button>
-
-                {syncError && (
-                  <button
-                    type="button"
-                    className="rounded-xl border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-700 hover:bg-red-100"
-                    title={
-                      retryCountdownSeconds && retryCountdownSeconds > 0
-                        ? `${syncError} (auto retry in ${retryCountdownSeconds}s)`
-                        : syncError
-                    }
-                    onClick={() => setConflictDialogOpen(true)}
-                  >
-                    {activeUnresolvedConflicts.length > 0 ? `Review (${activeUnresolvedConflicts.length})` : 'Warning'}
-                  </button>
-                )}
-
-                {retryCountdownSeconds !== null && retryCountdownSeconds > 0 && (
-                  <div
-                    className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700"
-                    title="Automatic retry is scheduled"
-                  >
-                    Retry in {retryCountdownSeconds}s ({syncRetryCount})
-                  </div>
-                )}
+                <div className="hidden md:inline-flex items-center rounded-full border border-[#d6e8e0] bg-white px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[#1e8572]">
+                  Pending Sync {pendingCount}
+                </div>
 
                 <div className="hidden md:flex items-center gap-2 rounded-full border border-[#e5d9d4] bg-white px-2 py-0.5">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-[#64748b]">
@@ -403,67 +268,6 @@ const Layout = ({ children }: LayoutProps) => {
           </Link>
         ))}
       </nav>
-
-      <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Sync Conflict Review</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            {activeUnresolvedConflicts.length === 0 ? (
-              <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-                No unresolved conflicts remain. You can retry sync now.
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[50vh] overflow-auto pr-1">
-                {activeUnresolvedConflicts.map((conflict) => (
-                  <div
-                    key={conflict.id}
-                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-black">{conflict.sku}</p>
-                        <p className="text-xs text-gray-700">{conflict.reason}</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        className="h-8 border-red-300 text-red-700"
-                        onClick={() => {
-                          void handleDropConflictRecord(conflict.recordId)
-                        }}
-                      >
-                        Remove Record
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </DialogBody>
-          <DialogFooter>
-            <DialogClose className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100">
-              Close
-            </DialogClose>
-            <button
-              type="button"
-              className="h-10 rounded-xl border border-gray-300 px-4 text-sm font-medium text-black hover:bg-gray-100"
-              onClick={handleClearConflictList}
-            >
-              Dismiss List
-            </button>
-            <button
-              type="button"
-              className="h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:opacity-90"
-              onClick={() => {
-                void retrySync()
-              }}
-            >
-              Retry Sync
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

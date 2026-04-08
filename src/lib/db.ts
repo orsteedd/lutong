@@ -31,7 +31,7 @@ export interface ScanLog {
 
 export interface PendingSyncItem {
   id: string
-  type: 'scan' | 'wastage' | 'transfer' | 'delivery' | 'audit'
+  type: 'scan' | 'wastage' | 'transfer' | 'delivery' | 'adjust' | 'audit'
   payload: string
   timestamp: number
   updatedAt: number
@@ -41,7 +41,7 @@ export interface PendingSyncItem {
 
 export interface ScanQueueRecord {
   id: string
-  type: 'delivery' | 'transfer' | 'wastage' | 'audit'
+  type: 'delivery' | 'transfer' | 'wastage' | 'adjust' | 'audit'
   sku: string
   name: string
   quantity: number

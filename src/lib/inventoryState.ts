@@ -84,7 +84,7 @@ const applyConfirmedRecord = (state: ComputedInventoryState, record: PendingScan
     return
   }
 
-  if (record.type === 'audit') {
+  if (record.type === 'adjust' || record.type === 'audit') {
     const targetTotal = Math.max(record.quantity, 0)
     if (state.displayQty > targetTotal) {
       state.displayQty = targetTotal
@@ -113,7 +113,7 @@ const applyPendingRecord = (state: ComputedInventoryState, record: PendingScan) 
     return
   }
 
-  if (record.type === 'audit') {
+  if (record.type === 'adjust' || record.type === 'audit') {
     state.adjustmentPendingApproval = record.quantity - state.confirmedAvailable
   }
 }

@@ -7,10 +7,8 @@ import DashboardPage from '@/pages/DashboardPage'
 import InventoryPage from '@/pages/InventoryPage'
 import ScanPage from '@/pages/ScanPage'
 import DeliveryPage from '@/pages/DeliveryPage'
-import AuditPage from '@/pages/AuditPage'
 import ReportsPage from '@/pages/ReportsPage'
 import AdminPage from '@/pages/AdminPage'
-import ApprovalsPage from '@/pages/ApprovalsPage'
 import ActivityLogPage from '@/pages/ActivityLogPage'
 import LoginPage from '@/pages/LoginPage'
 import ForbiddenPage from '@/pages/ForbiddenPage'
@@ -124,12 +122,7 @@ function App() {
                     <Route path="/inventory" element={<InventoryPage />} />
                     <Route path="/scan" element={<ScanPage />} />
                     <Route path="/delivery" element={<DeliveryPage />} />
-                    <Route path="/audit" element={<AuditPage />} />
                     <Route path="/reports" element={<ReportsPage />} />
-                    <Route
-                      path="/approvals"
-                      element={isAdmin ? <ApprovalsPage /> : <Navigate to="/forbidden" replace />}
-                    />
                     <Route
                       path="/activity"
                       element={isAdmin ? <ActivityLogPage /> : <Navigate to="/forbidden" replace />}

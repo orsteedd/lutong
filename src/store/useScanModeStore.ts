@@ -2,7 +2,7 @@
  * Scan Mode Store - Offline-first inventory workflow management
  * 
  * Tracks:
- * - Current scanning mode (delivery, transfer, wastage, audit)
+ * - Current scanning mode (delivery, transfer, wastage, adjust)
  * - Current item being processed
  * - Sync status and error state
  * - Queue operations
@@ -19,7 +19,7 @@ import { useShallow } from 'zustand/react/shallow'
 // TYPES & INTERFACES
 // ============================================================================
 
-export type ScanMode = 'delivery' | 'transfer' | 'wastage' | 'audit'
+export type ScanMode = 'delivery' | 'transfer' | 'wastage' | 'adjust'
 export type SyncStatus = 'idle' | 'syncing' | 'error' | 'success'
 
 export interface SyncState {

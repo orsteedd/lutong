@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, AdminOnlyAction } from '@/components'
-import { useAuthStore, useInventoryStore, useModeActions, useOfflineQueueStore, useApprovalStore } from '@/store'
+import { useAuthStore, useInventoryStore, useModeActions, useOfflineQueueStore } from '@/store'
 import { verifyDeliverySession, type DeliverySessionData } from '@/lib/deliveryVerification'
 
 interface DraftDeliveryLine {
@@ -16,6 +16,7 @@ interface DeliveryHistoryRow {
 }
 
 const DELIVERY_GROUND_TRUTH_KEY = 'malatang.deliveryGroundTruthSessions.v1'
+const SHOW_ADVANCED_DELIVERY_UI = false
 
 const DeliveryPage = () => {
   const navigate = useNavigate()
@@ -24,7 +25,6 @@ const DeliveryPage = () => {
   const { setMode } = useModeActions()
   const pendingScansState = useOfflineQueueStore((state) => state.pendingScans)
   const inventoryItemsState = useInventoryStore((state) => state.items)
-  const createApprovalRecord = useApprovalStore((state) => state.createRecord)
   const [customSessions, setCustomSessions] = useState<DeliverySessionData[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState('')
   const [newSupplier, setNewSupplier] = useState('')
@@ -33,7 +33,6 @@ const DeliveryPage = () => {
   const [draftQty, setDraftQty] = useState('')
   const [draftLines, setDraftLines] = useState<DraftDeliveryLine[]>([])
   const [formMessage, setFormMessage] = useState<string | null>(null)
-  const [approvalMessage, setApprovalMessage] = useState<string | null>(null)
   const isAdmin = user?.role === 'admin'
 
   const pendingScans = Array.isArray(pendingScansState) ? pendingScansState : []
@@ -68,6 +67,7 @@ const DeliveryPage = () => {
 
   const activeSession = selectedSession
   const hasActiveSession = Boolean(activeSession)
+  const adjustmentSessionId = activeSession ? `ADJ-${activeSession.id}` : 'ADJ-DELIVERY'
 
   useEffect(() => {
     if (selectedSessionId || deliverySessions.length === 0) return
@@ -273,49 +273,6 @@ const DeliveryPage = () => {
     navigate(`/scan?mode=delivery&session=${selectedSession.id}`)
   }
 
-  const submitForApproval = () => {
-    if (!selectedSession) {
-      setApprovalMessage('No delivery session selected.')
-      return
-    }
-
-    const lineItems = [
-      ...report.rows
-        .filter((row) => row.variance !== 0)
-        .map((row) => {
-          const match = inventoryItems.find((item) => item.sku === row.sku)
-          return {
-            itemId: match?.id,
-            sku: row.sku,
-            name: row.name,
-            delta: row.variance,
-            reason: row.variance > 0 ? 'delivery overage' : 'delivery shortage',
-          }
-        }),
-      ...report.wrongItems.map((wrong) => ({
-        itemId: inventoryItems.find((item) => item.sku === wrong.sku)?.id,
-        sku: wrong.sku,
-        name: inventoryItems.find((item) => item.sku === wrong.sku)?.name || 'Unknown Item',
-        delta: wrong.actualQty,
-        reason: 'delivery wrong item',
-      })),
-    ]
-
-    if (lineItems.length === 0) {
-      setApprovalMessage('No discrepancies to submit for approval.')
-      return
-    }
-
-    createApprovalRecord({
-      type: 'delivery_discrepancy',
-      title: `Delivery Discrepancy • ${selectedSession.id}`,
-      summary: `${lineItems.length} discrepancy line(s) pending admin approval`,
-      lineItems,
-    })
-
-    setApprovalMessage('Delivery discrepancy record queued for approval.')
-  }
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -474,11 +431,49 @@ const DeliveryPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Delivery Verification</h1>
-        <p className="text-[#64748b]">Fast scan verification with real-time discrepancy detection.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] mb-1">Deliveries (Receive)</h1>
+        <p className="text-[#64748b]">Flow: Scan Item {'->'} Add to Inventory Database.</p>
       </div>
 
-      <Card className="border-[#bde1d3] bg-[#ebf7f2] shadow-[0_14px_40px_rgba(15,23,42,0.06)]">
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Receive Loop</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-[#334155]">
+            1. Create or select a delivery ground truth session.
+          </p>
+          <p className="text-sm text-[#334155]">
+            2. Start receive scan for the selected session.
+          </p>
+          <p className="text-sm text-[#334155]">
+            3. Each receive scan adds quantity into the inventory database.
+          </p>
+          <Button variant="default" className="h-11" onClick={startDeliveryScan}>
+            Start Receive Scan
+          </Button>
+        </CardContent>
+      </Card>
+
+      {report.totals.discrepancyCount > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-semibold text-amber-900">Discrepancy detected during receive scan</p>
+            <p className="text-sm text-amber-800">
+              Continue using Adjustment scan to correct inventory before finalizing this session.
+            </p>
+            <Button
+              variant="default"
+              className="h-10"
+              onClick={() => navigate(`/scan?mode=adjust&session=${encodeURIComponent(adjustmentSessionId)}`)}
+            >
+              Start Adjustment Scan
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className={`border-[#bde1d3] bg-[#ebf7f2] shadow-[0_14px_40px_rgba(15,23,42,0.06)] ${SHOW_ADVANCED_DELIVERY_UI ? '' : 'hidden'}`}>
         <CardContent className="space-y-4 p-4 md:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
@@ -622,7 +617,7 @@ const DeliveryPage = () => {
       </Card>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${SHOW_ADVANCED_DELIVERY_UI ? '' : 'hidden'}`}>
         {isMobileView ? (
           <>
             <Button variant="default" className="h-12" onClick={startDeliveryScan}>
@@ -643,19 +638,16 @@ const DeliveryPage = () => {
         ) : null}
       </div>
 
-      <Card className="bg-[#f8fcfa] border-[#dceae4]">
+      <Card className={`bg-[#f8fcfa] border-[#dceae4] ${SHOW_ADVANCED_DELIVERY_UI ? '' : 'hidden'}`}>
         <CardHeader className="flex flex-col gap-3 border-b border-[#dceae4] pb-4 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle as="h2">History Table</CardTitle>
             <p className="text-sm text-[#64748b]">Last 5 deliveries with a quick jump back into each report.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <AdminOnlyAction title="Only admins can submit delivery discrepancies for approval.">
-              <Button className="h-11" onClick={submitForApproval}>Submit For Approval</Button>
+            <AdminOnlyAction title="Only admins can create delivery ground truth sessions.">
+              <Button className="h-11" onClick={startDeliveryScan}>Proceed to Receive</Button>
             </AdminOnlyAction>
-            <Button variant="outline" className="h-11" onClick={() => navigate('/approvals')}>
-              Open Approval Queue
-            </Button>
           </div>
         </CardHeader>
         <div className="flex flex-wrap items-center gap-2 border-b border-[#dceae4] px-4 py-3">
@@ -706,7 +698,6 @@ const DeliveryPage = () => {
               </table>
             </div>
           )}
-          {approvalMessage && <p className="px-4 py-4 text-xs text-gray-600">{approvalMessage}</p>}
         </CardContent>
       </Card>
     </div>

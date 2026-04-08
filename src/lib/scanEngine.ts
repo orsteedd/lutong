@@ -84,7 +84,7 @@ export const lookupItemBySku = (sku: string): ItemLookupResult => {
 // SCAN RECORD CREATION
 // ============================================================================
 
-export type ScanType = 'transfer' | 'wastage' | 'delivery' | 'audit'
+export type ScanType = 'transfer' | 'wastage' | 'delivery' | 'adjust'
 
 export interface ScanModeMetadata {
   sessionId?: string
@@ -167,10 +167,10 @@ export const validateScanInput = (
     }
   }
 
-  if ((scanType === 'delivery' || scanType === 'audit') && !metadata?.sessionId?.trim()) {
+  if ((scanType === 'delivery' || scanType === 'adjust') && !metadata?.sessionId?.trim()) {
     return {
       isValid: false,
-      error: `${scanType === 'delivery' ? 'Delivery' : 'Audit'} session is required`,
+      error: `${scanType === 'delivery' ? 'Delivery' : 'Adjust'} session is required`,
       code: 'UNKNOWN',
     }
   }
